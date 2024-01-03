@@ -20,7 +20,7 @@ ipc.serve(function () {
   });
 
   ipc.server.on("data", function (data, socket) {
-    const { spawn } = require("node:child_process");
+    const { spawn } = require("node:child_process", [], { shell: true });
     let child;
     try {
       child = spawn(data.toString());

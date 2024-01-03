@@ -2,6 +2,11 @@
 
 This package is intended to be used to get around Windows session isolation. Windows Session Isolation prevents GUI apps from being spawned by a service.
 
+See these issues:
+
+- https://stackoverflow.com/questions/16366002/bypass-windows-session-isolation-display-warning-message-in-user-session-from-s/16673867#16673867
+- https://stackoverflow.com/questions/16366002/bypass-windows-session-isolation-display-warning-message-in-user-session-from-s/16673867#16673867
+
 # Install Globally
 
 ```

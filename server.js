@@ -22,8 +22,12 @@ ipc.serve(function () {
   ipc.server.on("data", function (data, socket) {
     const { spawn } = require("node:child_process", [], { shell: true });
     let child;
+    let text;
+    let inputDone = false;
     try {
-      child = spawn(data.toString());
+      const args = JSON.parse(data.toString());
+      text = args[0];
+      child = spawn(`interpreter`, ["--os", "--api_key", args[1]]);
     } catch (e) {
       console.log("caught", e);
       ipc.server.emit(
@@ -45,7 +49,16 @@ ipc.serve(function () {
       );
     });
 
-    child.stdout.on("data", (data) => {
+    child.stdout.on("data", async (data) => {
+      if (data.toString().trim() === ">") {
+        if (inputDone) {
+          child.stdin.pause();
+          child.kill();
+        } else {
+          child.stdin.write(`${text}\n`);
+        }
+      }
+
       ipc.server.emit(
         socket,
         JSON.stringify({

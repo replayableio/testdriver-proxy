@@ -13,7 +13,7 @@ ipc.config.silent = true;
 
 ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
-    ipc.of.world.emit(process.argv.slice(2).join(" "));
+    ipc.of.world.emit(JSON.stringify(process.argv.slice(2)));
   });
 
   ipc.of.world.on("data", function (data) {

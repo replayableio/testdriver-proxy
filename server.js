@@ -52,10 +52,15 @@ ipc.serve(function () {
     child.stdout.on("data", async (data) => {
       if (data.toString().trim() === ">") {
         if (inputDone) {
-          child.stdin.pause();
+          child.stdin.end();
+          child.stdout.destroy();
+          child.stderr.destroy();
           child.kill();
         } else {
-          child.stdin.write(`${text}\n`);
+          inputDone = true;
+          child.stdin.write(
+            `${text}, use chrome if you need to use a web browser\n`
+          );
         }
       }
 

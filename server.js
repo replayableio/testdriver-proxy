@@ -59,7 +59,7 @@ ipc.serve(function () {
         } else {
           inputDone = true;
           child.stdin.write(
-            `${text}, use chrome if you need to use a web browser\n`
+            `${text}, use chrome if you need to use a web browser. Once the process is done, make a file at /tmp/td.log. In this file, say either "The test failed" or "The test passed," then explain how you came to that conclusion and the workarounds you tried.\n`
           );
         }
       }

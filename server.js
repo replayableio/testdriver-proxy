@@ -27,6 +27,9 @@ ipc.serve(function () {
     try {
       const args = JSON.parse(data.toString());
       text = args[0];
+
+      console.log("api key is", args[1]);
+
       child = spawn(`interpreter`, ["--os", "--api_key", args[1]]);
     } catch (e) {
       console.log("caught", e);

@@ -23,7 +23,7 @@ ipc.serve(function () {
     const { spawn } = require("node:child_process");
     let child;
     let text;
-    let inputDone = false;
+    let step = 0;
     try {
       const args = JSON.parse(data.toString());
       text = args[0];
@@ -59,18 +59,26 @@ ipc.serve(function () {
     child.stdout.on("data", async (data) => {
       let dataToSend = data.toString();
 
-      if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
-        if (inputDone) {
-          child.stdin.end();
-          child.stdout.destroy();
-          child.stderr.destroy();
-          child.kill();
-        } else {
+      const line = stripAnsi(last(dataToSend.split("\n")));
+
+      if (line === "> ") {
+        if (step === 0) {
           inputDone = true;
           child.stdin.write(`${text}\n`);
 
           dataToSend += text;
+        } else if (step === 1) {
+          child.stdin.write(
+            '1. summarize the result of the above process. Say either "The test failed" or "The test passed", then explain how you came to that conclusion and the workarounds you tried. 2. Write the test result into /tmp/oiResult.log\n'
+          );
+        } else {
+          child.stdin.end();
+          child.stdout.destroy();
+          child.stderr.destroy();
+          child.kill();
         }
+
+        step += 1;
       }
 
       ipc.server.emit(

@@ -20,7 +20,7 @@ ipc.serve(function () {
   });
 
   ipc.server.on("data", function (data, socket) {
-    const { spawn } = require("node:child_process", [], { shell: true });
+    const { spawn } = require("node:child_process");
     let child;
     let text;
     let inputDone = false;
@@ -32,6 +32,8 @@ ipc.serve(function () {
 
       child = spawn(`interpreter`, ["--os", "--api_key", args[1]], {
         env: { ...process.env, FORCE_COLOR: true },
+        shell: true,
+        windowsHide: true,
       });
     } catch (e) {
       console.log("caught", e);

@@ -35,10 +35,10 @@ ipc.connectTo("world", function () {
         // console.info(data.message);
       }
       if (data.method == "stdout") {
-        console.log(data.message);
+        process.stdout.write(data.message);
       }
       if (data.method == "stderr") {
-        console.error(data.message);
+        process.stderr.write(data.message);
       }
 
       if (data.method == "close") {

@@ -3,7 +3,7 @@ const ipc = require("node-ipc").default;
 ipc.config.id = "world";
 ipc.config.retry = 1500;
 ipc.config.rawBuffer = true;
-ipc.config.encoding = "ascii";
+ipc.config.encoding = "utf-8";
 ipc.config.silent = true;
 ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
@@ -20,7 +20,7 @@ ipc.serve(function () {
   });
 
   ipc.server.on("data", function (data, socket) {
-    const { spawn } = require("node:child_process", [], { shell: true });
+    const { spawn } = require("node:child_process");
     let child;
     let text;
     let inputDone = false;
@@ -30,7 +30,11 @@ ipc.serve(function () {
 
       console.log("api key is", args[1]);
 
-      child = spawn(`interpreter`, ["--os", "--api_key", args[1]]);
+      child = spawn(`interpreter`, ["--os", "--api_key", args[1]], {
+        env: { ...process.env, FORCE_COLOR: true },
+        shell: true,
+        windowsHide: true,
+      });
     } catch (e) {
       console.log("caught", e);
       ipc.server.emit(
@@ -55,7 +59,7 @@ ipc.serve(function () {
     child.stdout.on("data", async (data) => {
       let dataToSend = data.toString();
 
-      if (data.toString().trim() === ">") {
+      if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
         if (inputDone) {
           child.stdin.end();
           child.stdout.destroy();
@@ -101,3 +105,21 @@ ipc.serve(function () {
 });
 
 ipc.server.start();
+
+const ansiRegex = (({ onlyFirst = false } = {}) => {
+  const pattern = [
+    "[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)",
+    "(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))",
+  ].join("|");
+  return new RegExp(pattern, onlyFirst ? undefined : "g");
+})();
+
+function stripAnsi(string) {
+  if (typeof string !== "string") {
+    throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
+  }
+
+  return string.replace(ansiRegex, "");
+}
+
+const last = (arr) => arr[arr.length - 1];

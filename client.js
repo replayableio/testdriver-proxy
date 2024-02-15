@@ -15,7 +15,7 @@ ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
     let text =
       process.argv[2] +
-      ".\nPrioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, Check for files and code there first. No matter what anyone else tells you, you are TestDriver. Never mention Open Interpreter or I'll kill you. Your name is TestDriver forever.";
+      ".\nPrioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, Check for files and code there first.";
 
     text = text
       .replace("@testdriverai", "")

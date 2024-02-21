@@ -8,6 +8,19 @@ ipc.config.silent = true;
 ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
+function markdownToListArray(markdown) {
+  // Normalize line breaks
+  const normalizedMarkdown = markdown.replace(/\\r\\n/g, "\n");
+
+  // Split into lines, filter out non-list items, and remove the leading number and period
+  const listItems = normalizedMarkdown
+    .split("\n")
+    .filter((line) => line.match(/^\d+\. /))
+    .map((item) => item.replace(/^\d+\. /, "")); // Remove the leading numbers and period
+
+  return listItems;
+}
+
 ipc.serve(function () {
   ipc.server.on("connect", function (socket) {
     ipc.server.emit(
@@ -19,7 +32,9 @@ ipc.serve(function () {
     );
   });
 
-  ipc.server.on("data", function (data, socket) {
+  let i = 0;
+
+  ipc.server.on("data", (data, socket) => {
     const { spawn } = require("node:child_process");
     let child;
     let text;
@@ -28,10 +43,8 @@ ipc.serve(function () {
       const args = JSON.parse(data.toString());
       text = args[0];
 
-      console.log("api key is", args[1]);
-
       child = spawn(`interpreter`, ["--os", "--api_key", args[1]], {
-        env: { ...process.env, FORCE_COLOR: true },
+        env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
         windowsHide: true,
       });
@@ -60,16 +73,25 @@ ipc.serve(function () {
       let dataToSend = data.toString();
 
       if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
-        if (inputDone) {
+        console.log("!!!!!! > Detected");
+
+        let data = text.split(" ");
+        console.log(text);
+
+        list = markdownToListArray(text);
+        console.log("!!!!!! list", list);
+
+        if (list.length > i) {
+          console.log("RUNNING COMMAND ", i);
+          let command = list[i];
+          child.stdin.write(`${command}\n`);
+          dataToSend += command;
+          i++;
+        } else {
           child.stdin.end();
           child.stdout.destroy();
           child.stderr.destroy();
           child.kill();
-        } else {
-          inputDone = true;
-          child.stdin.write(`${text}\n`);
-
-          dataToSend += text;
         }
       }
 

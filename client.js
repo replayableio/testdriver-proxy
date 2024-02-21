@@ -13,9 +13,7 @@ ipc.config.silent = true;
 
 ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
-    let text =
-      process.argv[2] +
-      ".\nIf opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first.";
+    let text = process.argv[2];
 
     text = text
       .replace("@testdriverai", "")

@@ -8,6 +8,19 @@ ipc.config.silent = true;
 ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
+function markdownToListArray(markdown) {
+  // Normalize line breaks
+  const normalizedMarkdown = markdown.replace(/\\r\\n/g, "\n");
+
+  // Split into lines, filter out non-list items, and remove the leading number and period
+  const listItems = normalizedMarkdown
+    .split("\n")
+    .filter((line) => line.match(/^\d+\. /))
+    .map((item) => item.replace(/^\d+\. /, "")); // Remove the leading numbers and period
+
+  return listItems;
+}
+
 ipc.serve(function () {
   ipc.server.on("connect", function (socket) {
     ipc.server.emit(
@@ -19,7 +32,10 @@ ipc.serve(function () {
     );
   });
 
-  ipc.server.on("data", function (data, socket) {
+  let i = 0;
+  let killNext = false;
+
+  ipc.server.on("data", (data, socket) => {
     const { spawn } = require("node:child_process");
     let child;
     let text;
@@ -28,10 +44,8 @@ ipc.serve(function () {
       const args = JSON.parse(data.toString());
       text = args[0];
 
-      console.log("api key is", args[1]);
-
       child = spawn(`interpreter`, ["--os", "--api_key", args[1]], {
-        env: { ...process.env, FORCE_COLOR: true },
+        env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
         windowsHide: true,
       });
@@ -59,23 +73,30 @@ ipc.serve(function () {
     child.stdout.on("data", async (data) => {
       let dataToSend = data.toString();
 
-      const line = stripAnsi(last(dataToSend.split("\n")));
+      if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
+        console.log("!!!!!! > Detected");
 
-      if (line === "> ") {
-        if (step === 0) {
-          inputDone = true;
-          child.stdin.write(`${text}\n`);
+        let data = text.split(" ");
+        console.log(text);
 
-          dataToSend += text;
-        } else if (step === 1) {
-          child.stdin.write(
-            '1. summarize the result of the above process. Say either "The test failed" or "The test passed", then explain how you came to that conclusion and the workarounds you tried. 2. Write the test result into /tmp/oiResult.log\n'
-          );
-        } else {
+        list = markdownToListArray(text);
+
+        list.push(
+          'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
+        );
+        console.log("!!!!!! list", list);
+
+        if (!list[i]) {
           child.stdin.end();
           child.stdout.destroy();
           child.stderr.destroy();
           child.kill();
+        } else {
+          console.log("RUNNING COMMAND ", i);
+          let command = list[i];
+          child.stdin.write(`${command}\n`);
+          dataToSend += command;
+          i++;
         }
 
         step += 1;

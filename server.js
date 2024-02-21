@@ -81,6 +81,10 @@ ipc.serve(function () {
 
         list = markdownToListArray(text);
 
+        list.unshift(
+          "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first."
+        );
+
         list.push(
           'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
         );

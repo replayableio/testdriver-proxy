@@ -39,3 +39,17 @@ package-lock.json
 package.json
 server.js
 ```
+
+# Development
+
+In one terminal window:
+
+```
+node server.js
+```
+
+In another:
+
+```
+node client.js 'open google chrome' sk-xxx
+```

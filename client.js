@@ -17,6 +17,7 @@ ipc.connectTo("world", function () {
       process.argv[2] +
       ".\nPrioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, Check for files and code there first.";
 
+
     text = text
       .replace("@testdriverai", "")
       .replace(/"/g, '\\"')

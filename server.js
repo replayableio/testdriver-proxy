@@ -81,17 +81,17 @@ ipc.serve(function () {
         list = markdownToListArray(text);
         console.log("!!!!!! list", list);
 
-        if (list.length > i) {
+        if (!list[i]) {
+          child.stdin.end();
+          child.stdout.destroy();
+          child.stderr.destroy();
+          child.kill();
+        } else {
           console.log("RUNNING COMMAND ", i);
           let command = list[i];
           child.stdin.write(`${command}\n`);
           dataToSend += command;
           i++;
-        } else {
-          child.stdin.end();
-          child.stdout.destroy();
-          child.stderr.destroy();
-          child.kill();
         }
       }
 

@@ -33,12 +33,13 @@ ipc.serve(function () {
   });
 
   let i = 0;
+  let killNext = false;
 
   ipc.server.on("data", (data, socket) => {
     const { spawn } = require("node:child_process");
     let child;
     let text;
-    let inputDone = false;
+    let step = 0;
     try {
       const args = JSON.parse(data.toString());
       text = args[0];
@@ -79,6 +80,10 @@ ipc.serve(function () {
         console.log(text);
 
         list = markdownToListArray(text);
+
+        list.push(
+          'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
+        );
         console.log("!!!!!! list", list);
 
         if (!list[i]) {
@@ -93,6 +98,8 @@ ipc.serve(function () {
           dataToSend += command;
           i++;
         }
+
+        step += 1;
       }
 
       ipc.server.emit(

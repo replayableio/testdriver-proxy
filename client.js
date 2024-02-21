@@ -23,8 +23,6 @@ ipc.connectTo("world", function () {
       .split("\n")
       .join(" ");
 
-    console.log(text);
-
     const apiKey = process.argv[3];
     ipc.of.world.emit(JSON.stringify([text, apiKey, ...process.argv.slice(4)]));
   });

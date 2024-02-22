@@ -47,11 +47,15 @@ ipc.serve(function () {
       const args = JSON.parse(data.toString());
       text = args[0];
 
-      child = spawn(`interpreter`, ["--os", "-ci", ci, "--api_key", args[1]], {
-        env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
-        shell: true,
-        windowsHide: true,
-      });
+      child = spawn(
+        `interpreter`,
+        ["--os", "-ci", `"${ci}"`, "--api_key", args[1]],
+        {
+          env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+          shell: true,
+          windowsHide: true,
+        }
+      );
     } catch (e) {
       console.log("caught", e);
       ipc.server.emit(

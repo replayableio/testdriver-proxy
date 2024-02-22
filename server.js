@@ -8,6 +8,9 @@ ipc.config.silent = true;
 ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
+const ci =
+  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first.";
+
 function markdownToListArray(markdown) {
   // Normalize line breaks
   const normalizedMarkdown = markdown.replace(/\\r\\n/g, "\n");
@@ -44,7 +47,7 @@ ipc.serve(function () {
       const args = JSON.parse(data.toString());
       text = args[0];
 
-      child = spawn(`interpreter`, ["--os", "--api_key", args[1]], {
+      child = spawn(`interpreter`, ["--os", "-ci", ci, "--api_key", args[1]], {
         env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
         windowsHide: true,

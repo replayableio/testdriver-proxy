@@ -13,13 +13,19 @@ const ci =
 
 function markdownToListArray(markdown) {
   // Normalize line breaks
-  const normalizedMarkdown = markdown.replace(/\\r\\n/g, "\n");
+  const normalizedMarkdown = markdown.replace(/\\n/g, "\n");
+
+  console.log("normalizedMarkdown", normalizedMarkdown);
 
   // Split into lines, filter out non-list items, and remove the leading number and period
   const listItems = normalizedMarkdown
     .split("\n")
     .filter((line) => line.match(/^\d+\. /))
-    .map((item) => item.replace(/^\d+\. /, "")); // Remove the leading numbers and period
+    .map((item) => {
+      item = item.replace(/^\d+\. /, "");
+      item = item.replace(/\\r/g, "");
+      return item;
+    }); // Remove the leading numbers and period
 
   return listItems;
 }
@@ -36,7 +42,6 @@ ipc.serve(function () {
   });
 
   let i = 0;
-  let killNext = false;
 
   ipc.server.on("data", (data, socket) => {
     const { spawn } = require("node:child_process");
@@ -46,6 +51,8 @@ ipc.serve(function () {
     try {
       const args = JSON.parse(data.toString());
       text = args[0];
+
+      console.log("args1", args[1]);
 
       child = spawn(
         `interpreter`,
@@ -84,6 +91,7 @@ ipc.serve(function () {
         console.log("!!!!!! > Detected");
 
         let data = text.split(" ");
+        console.log("text is", text);
         console.log(text);
 
         list = markdownToListArray(text);

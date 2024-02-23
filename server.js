@@ -9,7 +9,7 @@ ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
 const ci =
-  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first.";
+  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first. DO NOT USE `screenshot.show()`. DO NOT USE APPLESCRIPT.";
 
 function markdownToListArray(markdown) {
   // Normalize line breaks

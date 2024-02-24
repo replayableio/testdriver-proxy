@@ -9,8 +9,11 @@ node server.js
 
 In another terminal. sk-xxx is your OpenAI key
 ```
+brew install jq
 node client.js "$(jq -Rs . example.md)" sk-xxx
 ```
+
+Edit `example.md` to change.
 
 # Overview
 

@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@node-ipc/node-ipc": "^11.0.3",
+    "dashcam-chrome": "^0.2.3",
     "node-ipc": "^11.1.0"
   },
   "bin": {

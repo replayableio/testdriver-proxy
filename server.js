@@ -1,3 +1,4 @@
+const { spawn } = require("node:child_process");
 const ipc = require("node-ipc").default;
 
 ipc.config.id = "world";
@@ -41,28 +42,155 @@ ipc.serve(function () {
     );
   });
 
-  let i = 0;
+  ipc.server.on("data", async (data, socket) => {
+    await spawnShell(data, socket);
+    spawnInterpreter(data, socket);
+  });
+});
 
-  ipc.server.on("data", (data, socket) => {
-    const { spawn } = require("node:child_process");
-    let child;
-    let text;
-    let step = 0;
+let i = 0;
+const spawnInterpreter = function (data, socket) {
+  let child;
+  let text;
+  let step = 0;
+  try {
+    const args = JSON.parse(data.toString());
+    text = args[0];
+
+    console.log("args1", args[1]);
+
+    child = spawn(
+      `interpreter`,
+      ["--os", "-ci", `"${ci}"`, "--api_key", args[1]],
+      {
+        env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+        shell: true,
+        windowsHide: true,
+      }
+    );
+  } catch (e) {
+    console.log("caught", e);
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "stderr",
+        message: e.toString(),
+      })
+    );
+  }
+
+  child.on("error", function (e) {
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "stderr",
+        message: e.toString(),
+      })
+    );
+  });
+
+  child.stdout.on("data", async (data) => {
+    let dataToSend = data.toString();
+
+    if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
+      console.log("!!!!!! > Detected");
+
+      let data = text.split(" ");
+      console.log("text is", text);
+      console.log(text);
+
+      list = markdownToListArray(text);
+
+      // list.unshift(
+      //   "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first."
+      // );
+
+      list.push(
+        'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
+      );
+      console.log("!!!!!! list", list);
+
+      if (!list[i]) {
+        child.stdin.end();
+        child.stdout.destroy();
+        child.stderr.destroy();
+        child.kill();
+      } else {
+        console.log("RUNNING COMMAND ", i);
+        let command = list[i];
+        child.stdin.write(`${command}\n`);
+        dataToSend += command;
+        i++;
+      }
+
+      step += 1;
+    }
+
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "stdout",
+        message: dataToSend,
+      })
+    );
+  });
+
+  child.stderr.on("data", (data) => {
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "stderr",
+        message: data.toString(),
+      })
+    );
+  });
+
+  child.on("close", (code) => {
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "close",
+        message: `child process exited with code ${code}`,
+      })
+    );
+  });
+};
+
+const spawnShell = function (data, socket) {
+  let child;
+  let text;
+  let step = 0;
+
+  return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
       text = args[0];
 
-      console.log("args1", args[1]);
+      console.log(
+        "spawning ",
+        `sh ~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh`
+      );
 
       child = spawn(
-        `interpreter`,
-        ["--os", "-ci", `"${ci}"`, "--api_key", args[1]],
+        `sh`,
+        ["~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"],
         {
           env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
           shell: true,
           windowsHide: true,
         }
       );
+
+      child.stdout.on("data", function (data) {
+        console.log("Child data: " + data);
+      });
+      child.on("error", function () {
+        console.log("Failed to start child.");
+      });
+      child.on("close", function (code) {});
+      child.stdout.on("end", function () {
+        // console.log("Finished collecting data chunks.");
+      });
     } catch (e) {
       console.log("caught", e);
       ipc.server.emit(
@@ -74,7 +202,20 @@ ipc.serve(function () {
       );
     }
 
+    child.on("close", function (exitCode) {
+      console.log("close", exitCode);
+      ipc.server.emit(
+        socket,
+        JSON.stringify({
+          method: "stderr",
+          message: "Child process exited with code " + exitCode,
+        })
+      );
+      resolve();
+    });
+
     child.on("error", function (e) {
+      console.log("error", e);
       ipc.server.emit(
         socket,
         JSON.stringify({
@@ -82,44 +223,14 @@ ipc.serve(function () {
           message: e.toString(),
         })
       );
+      reject();
     });
 
     child.stdout.on("data", async (data) => {
+      console.log(data);
       let dataToSend = data.toString();
 
-      if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
-        console.log("!!!!!! > Detected");
-
-        let data = text.split(" ");
-        console.log("text is", text);
-        console.log(text);
-
-        list = markdownToListArray(text);
-
-        // list.unshift(
-        //   "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first."
-        // );
-
-        list.push(
-          'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
-        );
-        console.log("!!!!!! list", list);
-
-        if (!list[i]) {
-          child.stdin.end();
-          child.stdout.destroy();
-          child.stderr.destroy();
-          child.kill();
-        } else {
-          console.log("RUNNING COMMAND ", i);
-          let command = list[i];
-          child.stdin.write(`${command}\n`);
-          dataToSend += command;
-          i++;
-        }
-
-        step += 1;
-      }
+      console.log("dataToSend", dataToSend);
 
       ipc.server.emit(
         socket,
@@ -128,29 +239,30 @@ ipc.serve(function () {
           message: dataToSend,
         })
       );
-    });
 
-    child.stderr.on("data", (data) => {
-      ipc.server.emit(
-        socket,
-        JSON.stringify({
-          method: "stderr",
-          message: data.toString(),
-        })
-      );
-    });
+      child.stderr.on("data", (data) => {
+        ipc.server.emit(
+          socket,
+          JSON.stringify({
+            method: "stderr",
+            message: data.toString(),
+          })
+        );
+      });
 
-    child.on("close", (code) => {
-      ipc.server.emit(
-        socket,
-        JSON.stringify({
-          method: "close",
-          message: `child process exited with code ${code}`,
-        })
-      );
+      child.on("close", (code) => {
+        ipc.server.emit(
+          socket,
+          JSON.stringify({
+            method: "close",
+            message: `child process exited with code ${code}`,
+          })
+        );
+        reject();
+      });
     });
   });
-});
+};
 
 ipc.server.start();
 

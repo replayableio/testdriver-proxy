@@ -168,11 +168,11 @@ const spawnShell = function (data, socket) {
 
       console.log(
         "spawning ",
-        `sh ~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh`
+        `source ~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh`
       );
 
       child = spawn(
-        `sh`,
+        `source`,
         ["~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"],
         {
           env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering

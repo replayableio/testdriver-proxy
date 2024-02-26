@@ -10,7 +10,7 @@ ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
 const ci =
-  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first. DO NOT USE `screenshot.show()`. DO NOT USE APPLESCRIPT.";
+  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first. DO NOT USE `screenshot.show()`. DO NOT USE APPLESCRIPT. It is perfectly fine to use coordinates as long as the coordinates were determined through a search and not a guess.";
 
 function markdownToListArray(markdown) {
   // Normalize line breaks
@@ -106,7 +106,7 @@ const spawnInterpreter = function (data, socket) {
       // );
 
       list.push(
-        'Summarize the result of the the previous processes. Say either "The test failed." or "The test passed.", then in a new paragraph explain how you came to that conclusion and the workarounds you tried. Save this result into /tmp/oiResult.log'
+        'Summarize the result of the the previous steps. You do not need to strictly comply with instruction steps for the test to pass. Workarounds are irrelevant to the test passing or failing. Say either "The test failed." or "The test passed.". Then in a new paragraph that is 3 sentences long explain how you came to that conclusion. Save this result into /tmp/oiResult.log'
       );
       console.log("!!!!!! list", list);
 

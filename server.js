@@ -180,19 +180,7 @@ const spawnShell = function (data, socket) {
           windowsHide: true,
         }
       );
-
-      child.stdout.on("data", function (data) {
-        console.log("Child data: " + data);
-      });
-      child.on("error", function () {
-        console.log("Failed to start child.");
-      });
-      child.on("close", function (code) {});
-      child.stdout.on("end", function () {
-        // console.log("Finished collecting data chunks.");
-      });
     } catch (e) {
-      console.log("caught", e);
       ipc.server.emit(
         socket,
         JSON.stringify({
@@ -200,6 +188,7 @@ const spawnShell = function (data, socket) {
           message: e.toString(),
         })
       );
+      reject();
     }
 
     child.on("close", function (exitCode) {
@@ -211,7 +200,7 @@ const spawnShell = function (data, socket) {
           message: "Child process exited with code " + exitCode,
         })
       );
-      resolve();
+      reject();
     });
 
     child.on("error", function (e) {
@@ -226,8 +215,18 @@ const spawnShell = function (data, socket) {
       reject();
     });
 
+    child.stdout.on("end", function () {
+      ipc.server.emit(
+        socket,
+        JSON.stringify({
+          method: "stderr",
+          message: "Prerun.sh process end",
+        })
+      );
+      resolve();
+    });
+
     child.stdout.on("data", async (data) => {
-      console.log(data);
       let dataToSend = data.toString();
 
       console.log("dataToSend", dataToSend);
@@ -239,27 +238,16 @@ const spawnShell = function (data, socket) {
           message: dataToSend,
         })
       );
+    });
 
-      child.stderr.on("data", (data) => {
-        ipc.server.emit(
-          socket,
-          JSON.stringify({
-            method: "stderr",
-            message: data.toString(),
-          })
-        );
-      });
-
-      child.on("close", (code) => {
-        ipc.server.emit(
-          socket,
-          JSON.stringify({
-            method: "close",
-            message: `child process exited with code ${code}`,
-          })
-        );
-        reject();
-      });
+    child.stderr.on("data", (data) => {
+      ipc.server.emit(
+        socket,
+        JSON.stringify({
+          method: "stderr",
+          message: data.toString(),
+        })
+      );
     });
   });
 };

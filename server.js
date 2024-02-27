@@ -244,7 +244,7 @@ const spawnShell = function (data, socket) {
       ipc.server.emit(
         socket,
         JSON.stringify({
-          method: "stderr",
+          method: "stdout",
           message: data.toString(),
         })
       );

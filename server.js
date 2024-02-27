@@ -188,7 +188,7 @@ const spawnShell = function (data, socket) {
           message: e.toString(),
         })
       );
-      reject();
+      resolve();
     }
 
     child.on("close", function (exitCode) {
@@ -200,7 +200,7 @@ const spawnShell = function (data, socket) {
           message: "Child process exited with code " + exitCode,
         })
       );
-      reject();
+      resolve();
     });
 
     child.on("error", function (e) {
@@ -212,7 +212,7 @@ const spawnShell = function (data, socket) {
           message: e.toString(),
         })
       );
-      reject();
+      resolve();
     });
 
     child.stdout.on("end", function () {

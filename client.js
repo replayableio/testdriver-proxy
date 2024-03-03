@@ -15,11 +15,7 @@ ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
     let text = process.argv[2];
 
-    text = text
-      .replace("@testdriverai", "")
-      .replace(/"/g, '\\"')
-      .split("\n")
-      .join(" ");
+    text = text.split("\n").join(" ");
 
     const apiKey = process.argv[3];
     ipc.of.world.emit(JSON.stringify([text, apiKey, ...process.argv.slice(4)]));

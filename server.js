@@ -1,5 +1,6 @@
 const { spawn } = require("node:child_process");
 const ipc = require("node-ipc").default;
+const fs = require('fs')
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
@@ -43,7 +44,12 @@ ipc.serve(function () {
   });
 
   ipc.server.on("data", async (data, socket) => {
-    await spawnShell(data, socket);
+
+    console.log(JSON.parse(data.toString()));
+
+    await spawnShell(data, socket).catch((e) => {
+      console.error(e)
+    });
     spawnInterpreter(data, socket);
   });
 });
@@ -166,14 +172,35 @@ const spawnShell = function (data, socket) {
       const args = JSON.parse(data.toString());
       text = args[0];
 
+      // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
+      console.log('PRERUN SCRIPT')
+      console.log(args[2])
+
+      let prerunFilePath = "~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"
+
+      // Check if the prerun.sh file doesn't exist
+      // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
+      // mostly for backward compatibility
+      console.log('prerunFilePath', prerunFilePath)
+      if (!fs.existsSync(prerunFilePath) && args[2]) {
+        // Write args[2] to the prerun.sh file
+        prerunFilePath =  "./prerun.sh";
+        try {fs.writeFileSync(prerunFilePath, args[2].replace(/\\n/g, '\n'), {flat: 'w+'});} catch (e) {
+          console.error(e)
+        }
+        console.log(`Written to ${prerunFilePath}`);
+      } else {
+        console.log(`${prerunFilePath} already exists.`);
+      }
+
       console.log(
         "spawning ",
-        `source ~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh`
+        `source ${prerunFilePath}`
       );
 
       child = spawn(
         `source`,
-        ["~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"],
+        [prerunFilePath],
         {
           env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
           shell: true,

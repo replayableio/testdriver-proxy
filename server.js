@@ -60,6 +60,9 @@ const spawnInterpreter = function (data, socket) {
   let text;
   let step = 0;
   try {
+
+    console.log(data.toString());
+
     const args = JSON.parse(data.toString());
     text = args[0];
 
@@ -170,11 +173,16 @@ const spawnShell = function (data, socket) {
   return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
+
+      console.log(args)
+
       text = args[0];
+      key = args[1];
+      prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
       console.log('PRERUN SCRIPT')
-      console.log(args[2])
+      console.log(prerun)
 
       let prerunFilePath = "~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"
 
@@ -182,12 +190,12 @@ const spawnShell = function (data, socket) {
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
       // mostly for backward compatibility
       console.log('prerunFilePath', prerunFilePath)
-      if (!fs.existsSync(prerunFilePath) && args[2]) {
-        // Write args[2] to the prerun.sh file
-        prerunFilePath =  "./prerun.sh";
-        try {fs.writeFileSync(prerunFilePath, args[2].replace(/\\n/g, '\n'), {flat: 'w+'});} catch (e) {
+      if (prerun) { // this should be swapped, prerun should take over
+        // Write prerun to the prerun.sh file
+        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flat: 'w+'});} catch (e) {
           console.error(e)
         }
+        prerunFilePath =  "./prerun.sh";
         console.log(`Written to ${prerunFilePath}`);
       } else {
         console.log(`${prerunFilePath} already exists.`);
@@ -198,15 +206,27 @@ const spawnShell = function (data, socket) {
         `source ${prerunFilePath}`
       );
 
-      child = spawn(
-        `source`,
-        [prerunFilePath],
-        {
-          env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
-          shell: true,
-          windowsHide: true,
-        }
-      );
+      if (fs.existsSync(prerunFilePath)) {
+
+        child = spawn(
+          `source`,
+          [prerunFilePath],
+          {
+            env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+            shell: true,
+            windowsHide: true,
+          }
+        );
+      } else {
+        ipc.server.emit(
+          socket,
+          JSON.stringify({
+            method: "stderr",
+            message: `Prerun.sh file does not exist at ${prerunFilePath}`,
+          })
+        );
+        resolve();
+      }
     } catch (e) {
       ipc.server.emit(
         socket,

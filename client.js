@@ -13,6 +13,9 @@ ipc.config.silent = true;
 
 ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
+    
+    console.log('client args', process.argv)
+    
     let text = process.argv[2];
 
     text = text.split("\n").join(" ");

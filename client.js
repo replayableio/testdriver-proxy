@@ -20,7 +20,7 @@ ipc.connectTo("world", function () {
     const apiKey = process.argv[3];
     const prerun = process.argv[4];
 
-    ipc.of.world.emit(JSON.stringify([text, apiKey, prerun]));
+    ipc.of.world.emit(JSON.stringify([text, apiKey, ...process.argv.slice(4)]));  
   });
 
   ipc.of.world.on("data", function (data) {

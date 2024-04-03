@@ -188,7 +188,7 @@ const spawnShell = function (data, socket) {
 
       fs.mkdirSync(dir, { recursive: true });
 
-      let prerunFilePath = "${dir}/prerun.sh"
+      let prerunFilePath = `${dir}/prerun.sh`;
 
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`

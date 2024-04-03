@@ -159,7 +159,7 @@ const spawnInterpreter = function (data, socket) {
       socket,
       JSON.stringify({
         method: "close",
-        message: `child process exited with code ${code}`,
+        message: `child process exited with code ${code}\n`,
       })
     );
   });
@@ -269,7 +269,7 @@ const spawnShell = function (data, socket) {
         socket,
         JSON.stringify({
           method: "stderr",
-          message: "Prerun.sh process end",
+          message: "Prerun.sh process end\n",
         })
       );
       resolve();

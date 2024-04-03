@@ -196,7 +196,7 @@ const spawnShell = function (data, socket) {
       console.log('prerunFilePath', prerunFilePath)
       if (prerun) { // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
-        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flat: 'w+'});} catch (e) {
+        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
           console.error(e)
         }
         prerunFilePath =  "./prerun.sh";

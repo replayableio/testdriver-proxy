@@ -199,7 +199,6 @@ const spawnShell = function (data, socket) {
         try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
           console.error(e)
         }
-        prerunFilePath =  "./prerun.sh";
         console.log(`Written to ${prerunFilePath}`);
       } else {
         console.log(`${prerunFilePath} already exists.`);

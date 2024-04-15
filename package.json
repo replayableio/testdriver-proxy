@@ -1,5 +1,5 @@
 {
-  "name": "cliipc",
+  "name": "testdriver-proxy",
   "version": "1.1.1",
   "description": "",
   "main": "index.js",
@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@node-ipc/node-ipc": "^11.0.3",
+    "@nut-tree/nut-js": "^4.1.0",
     "dashcam-chrome": "^0.2.3",
     "node-ipc": "^11.1.0"
   },

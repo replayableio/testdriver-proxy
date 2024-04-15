@@ -159,7 +159,7 @@ const spawnInterpreter = function (data, socket) {
       socket,
       JSON.stringify({
         method: "close",
-        message: `child process exited with code ${code}`,
+        message: `child process exited with code ${code}\n`,
       })
     );
   });
@@ -184,7 +184,7 @@ const spawnShell = function (data, socket) {
       console.log('PRERUN SCRIPT')
       console.log(prerun)
 
-      let prerunFilePath = "~/actions-runner/_work/testdriver/testdriver/.testdriver/prerun.sh"
+      let prerunFilePath = `/tmp/testdriver-prerun.sh`;
 
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
@@ -192,10 +192,12 @@ const spawnShell = function (data, socket) {
       console.log('prerunFilePath', prerunFilePath)
       if (prerun) { // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
-        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flat: 'w+'});} catch (e) {
+
+        console.log('writing ', prerun, 'to', prerunFilePath)
+
+        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
           console.error(e)
         }
-        prerunFilePath =  "./prerun.sh";
         console.log(`Written to ${prerunFilePath}`);
       } else {
         console.log(`${prerunFilePath} already exists.`);
@@ -267,7 +269,7 @@ const spawnShell = function (data, socket) {
         socket,
         JSON.stringify({
           method: "stderr",
-          message: "Prerun.sh process end",
+          message: "Prerun.sh process end\n",
         })
       );
       resolve();

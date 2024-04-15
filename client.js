@@ -13,6 +13,7 @@ ipc.config.silent = true;
 
 ipc.connectTo("world", function () {
   ipc.of.world.on("connect", function () {
+        
     let text = process.argv[2];
 
     text = text.split("\n").join(" ");
@@ -20,7 +21,7 @@ ipc.connectTo("world", function () {
     const apiKey = process.argv[3];
     const prerun = process.argv[4];
 
-    ipc.of.world.emit(JSON.stringify([text, apiKey, prerun]));
+    ipc.of.world.emit(JSON.stringify([text, apiKey, prerun]));  
   });
 
   ipc.of.world.on("data", function (data) {

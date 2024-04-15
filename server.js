@@ -69,7 +69,7 @@ const spawnInterpreter = function (data, socket) {
 
     child = spawn(
       `testdriver`,
-      [],
+      [args[1]],
       {
         env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
@@ -247,7 +247,7 @@ const spawnShell = function (data, socket) {
         socket,
         JSON.stringify({
           method: "stderr",
-          message: "Child process exited with code " + exitCode,
+          message: "Child process exited with code " + exitCode + "\n\n",
         })
       );
       resolve();
@@ -259,7 +259,7 @@ const spawnShell = function (data, socket) {
         socket,
         JSON.stringify({
           method: "stderr",
-          message: e.toString(),
+          message: e.toString() + "\n\n",
         })
       );
       resolve();
@@ -270,7 +270,7 @@ const spawnShell = function (data, socket) {
         socket,
         JSON.stringify({
           method: "stderr",
-          message: "Prerun.sh process end\n",
+          message: "Prerun.sh process end\n\n",
         })
       );
       resolve();

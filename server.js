@@ -10,9 +10,6 @@ ipc.config.silent = true;
 ipc.config.logDepth = 0; //default
 ipc.config.logger = () => {};
 
-const ci =
-  "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first. DO NOT USE `screenshot.show()`. DO NOT USE APPLESCRIPT. It is perfectly fine to use coordinates as long as the coordinates were determined through a search and not a guess.";
-
 function markdownToListArray(markdown) {
   // Normalize line breaks
   const normalizedMarkdown = markdown.replace(/\\n/g, "\n");
@@ -68,13 +65,16 @@ const spawnInterpreter = function (data, socket) {
 
     console.log("args1", args[1]);
 
+    console.log('!!! SPAWNING')
+
     child = spawn(
-      `interpreter`,
-      ["--os", "-ci", `"${ci}"`, "--api_key", args[1]],
+      `testdriver`,
+      [],
       {
-        env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+        env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
         windowsHide: true,
+      
       }
     );
   } catch (e) {
@@ -89,6 +89,9 @@ const spawnInterpreter = function (data, socket) {
   }
 
   child.on("error", function (e) {
+
+    console.log("error", e);
+
     ipc.server.emit(
       socket,
       JSON.stringify({
@@ -99,6 +102,7 @@ const spawnInterpreter = function (data, socket) {
   });
 
   child.stdout.on("data", async (data) => {
+
     let dataToSend = data.toString();
 
     if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
@@ -110,12 +114,8 @@ const spawnInterpreter = function (data, socket) {
 
       list = markdownToListArray(text);
 
-      // list.unshift(
-      //   "The next prompts will be a list of instructions. Consider the following notes for each instruction: If opening a browser, prioritize using google chrome in fullscreen unless otherwise instructed. Go as fast as you can. Your working directory is /Users/ec2-user/actions-runner/_work/testdriver/testdriver, check for files and code there first."
-      // );
-
       list.push(
-        'Summarize the result of the the previous steps. You do not need to strictly comply with instruction steps for the test to pass. Workarounds are irrelevant to the test passing or failing. Say either "The test failed." or "The test passed.". Then in a new paragraph that is 3 sentences long explain how you came to that conclusion. Save this result into /tmp/oiResult.log'
+        'Summarize the test results.'
       );
       console.log("!!!!!! list", list);
 
@@ -190,6 +190,7 @@ const spawnShell = function (data, socket) {
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
       // mostly for backward compatibility
       console.log('prerunFilePath', prerunFilePath)
+      
       if (prerun) { // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
 

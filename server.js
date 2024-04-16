@@ -14,8 +14,6 @@ function markdownToListArray(markdown) {
   // Normalize line breaks
   const normalizedMarkdown = markdown.replace(/\\n/g, "\n");
 
-  console.log("normalizedMarkdown", normalizedMarkdown);
-
   // Split into lines, filter out non-list items, and remove the leading number and period
   const listItems = normalizedMarkdown
     .split("\n")
@@ -58,7 +56,7 @@ const spawnInterpreter = function (data, socket) {
   let step = 0;
   try {
 
-    console.log(data.toString());
+    // console.log(data.toString());
 
     const args = JSON.parse(data.toString());
     text = args[0];
@@ -106,18 +104,13 @@ const spawnInterpreter = function (data, socket) {
     let dataToSend = data.toString();
 
     if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
-      console.log("!!!!!! > Detected");
 
       let data = text.split(" ");
-      console.log("text is", text);
-      console.log(text);
 
       list = markdownToListArray(text);
 
-      list.push(
-        'Summarize the test results.'
-      );
-      console.log("!!!!!! list", list);
+      list.push('/summarize');
+      list.push('/quit');
 
       if (!list[i]) {
         child.stdin.end();
@@ -125,7 +118,6 @@ const spawnInterpreter = function (data, socket) {
         child.stderr.destroy();
         child.kill();
       } else {
-        console.log("RUNNING COMMAND ", i);
         let command = list[i];
         child.stdin.write(`${command}\n`);
         dataToSend += command;
@@ -174,34 +166,24 @@ const spawnShell = function (data, socket) {
     try {
       const args = JSON.parse(data.toString());
 
-      console.log(args)
-
       text = args[0];
       key = args[1];
       prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
-      console.log('PRERUN SCRIPT')
-      console.log(prerun)
 
       let prerunFilePath = `/tmp/testdriver-prerun.sh`;
 
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
-      // mostly for backward compatibility
-      console.log('prerunFilePath', prerunFilePath)
-      
+      // mostly for backward compatibility      
       if (prerun) { // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
-
-        console.log('writing ', prerun, 'to', prerunFilePath)
 
         try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
           console.error(e)
         }
-        console.log(`Written to ${prerunFilePath}`);
       } else {
-        console.log(`${prerunFilePath} already exists.`);
       }
 
       console.log(

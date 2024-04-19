@@ -45,7 +45,15 @@ ipc.serve(function () {
     await spawnShell(data, socket).catch((e) => {
       console.error(e)
     });
-    spawnInterpreter(data, socket);
+
+    console.log('waiting 10 seconds to start')
+
+    // give prerun tiem to resolve, launch an app, etc
+    // this gives chrome time to launch, so prompts assume prerun has resolved
+    setTimeout(() => {
+      spawnInterpreter(data, socket);
+    }, 10000)
+    
   });
 });
 

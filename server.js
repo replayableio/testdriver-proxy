@@ -1,5 +1,5 @@
 const { spawn } = require("node:child_process");
-const ipc = require("node-ipc").default;
+const ipc = require("@node-ipc/node-ipc").default;
 const fs = require('fs')
 
 ipc.config.id = "world";

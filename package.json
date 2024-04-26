@@ -1,6 +1,6 @@
 {
   "name": "testdriver-proxy",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,8 +11,7 @@
   "dependencies": {
     "@node-ipc/node-ipc": "^11.0.3",
     "@nut-tree/nut-js": "^4.1.0",
-    "dashcam-chrome": "^0.2.3",
-    "node-ipc": "^11.1.0"
+    "dashcam-chrome": "^0.2.3"
   },
   "bin": {
     "testdriver-proxy": "./main.js"

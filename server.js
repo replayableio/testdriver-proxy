@@ -50,9 +50,7 @@ ipc.serve(function () {
 
     // give prerun tiem to resolve, launch an app, etc
     // this gives chrome time to launch, so prompts assume prerun has resolved
-    setTimeout(() => {
-      spawnInterpreter(data, socket);
-    }, 10000)
+    spawnInterpreter(data, socket);
     
   });
 });

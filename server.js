@@ -46,11 +46,16 @@ ipc.serve(function () {
       console.error(e)
     });
 
-    console.log('waiting 10 seconds to start')
+    console.log('waiting 30 seconds to start')
 
-    // give prerun tiem to resolve, launch an app, etc
-    // this gives chrome time to launch, so prompts assume prerun has resolved
-    spawnInterpreter(data, socket);
+    setTimeout(() => {
+
+      // give prerun tiem to resolve, launch an app, etc
+      // this gives chrome time to launch, so prompts assume prerun has resolved
+      spawnInterpreter(data, socket);
+
+    }, 30000)
+
     
   });
 });

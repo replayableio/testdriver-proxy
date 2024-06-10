@@ -46,15 +46,13 @@ ipc.serve(function () {
       console.error(e)
     });
 
-    console.log('waiting 30 seconds to start')
-
     setTimeout(() => {
 
       // give prerun tiem to resolve, launch an app, etc
       // this gives chrome time to launch, so prompts assume prerun has resolved
       spawnInterpreter(data, socket);
 
-    }, 30000)
+    }, 5000)
 
     
   });
@@ -72,13 +70,11 @@ const spawnInterpreter = function (data, socket) {
     const args = JSON.parse(data.toString());
     text = args[0];
 
-    console.log("args1", args[1]);
-
     console.log('!!! SPAWNING')
 
     child = spawn(
       `testdriver`,
-      [args[1]],
+      [],
       {
         env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
         shell: true,
@@ -112,11 +108,9 @@ const spawnInterpreter = function (data, socket) {
 
   child.stdout.on("data", async (data) => {
 
-    let dataToSend = data.toString();
+    let dataAsString = data.toString();
 
-    if (stripAnsi(last(dataToSend.split("\n"))) === "> ") {
-
-      let data = text.split(" ");
+    if (stripAnsi(last(dataAsString.split("\n"))).indexOf('>') === 0) {
 
       list = markdownToListArray(text);
 
@@ -131,20 +125,12 @@ const spawnInterpreter = function (data, socket) {
       } else {
         let command = list[i];
         child.stdin.write(`${command}\n`);
-        dataToSend += command;
         i++;
       }
 
       step += 1;
     }
-
-    ipc.server.emit(
-      socket,
-      JSON.stringify({
-        method: "stdout",
-        message: dataToSend,
-      })
-    );
+    
   });
 
   child.stderr.on("data", (data) => {
@@ -270,15 +256,15 @@ const spawnShell = function (data, socket) {
     });
 
     child.stdout.on("data", async (data) => {
-      let dataToSend = data.toString();
+      let dataAsString = data.toString();
 
-      console.log("dataToSend", dataToSend);
+      console.log("dataAsString", dataAsString);
 
       ipc.server.emit(
         socket,
         JSON.stringify({
           method: "stdout",
-          message: dataToSend,
+          message: dataAsString,
         })
       );
     });

@@ -25,6 +25,7 @@ ipc.connectTo("world", function () {
   });
 
   ipc.of.world.on("data", function (data) {
+
     try {
       data = JSON.parse(data);
 

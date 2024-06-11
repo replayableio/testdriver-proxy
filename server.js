@@ -74,7 +74,7 @@ const spawnInterpreter = function (data, socket) {
     console.log('!!! SPAWNING')
 
     child = spawn(
-      `DEV=true testdriver`,
+      `testdriver`,
       [],
       {
         env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering

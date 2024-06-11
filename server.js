@@ -5,11 +5,15 @@ const { listenerCount, listeners } = require("node:process");
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
-ipc.config.rawBuffer = true;
-ipc.config.encoding = "utf-8";
+// ipc.config.rawBuffer = true;
+// ipc.config.encoding = "utf-8";
+ipc.config.sync = true;
 ipc.config.silent = true;
-ipc.config.logDepth = 0; //default
-ipc.config.logger = () => {};
+// ipc.config.logDepth = 0; //default
+// ipc.config.logger = () => {};
+
+// log the version from package.json
+console.log('testdriver-proxy version', require('./package.json').version)
 
 function markdownToListArray(markdown) {
   // Normalize line breaks
@@ -32,20 +36,18 @@ ipc.serve(function () {
   ipc.server.on("connect", function (socket) {
     ipc.server.emit(
       socket,
-      JSON.stringify({
-        method: "status",
-        message: "connected",
-      })
+      "status",
+      "connected"
     );
   });
 
-  ipc.server.on("data", async (data, socket) => {
+  ipc.server.on("command", async (data, socket) => {
+
+    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command');
 
     await spawnShell(data, socket).catch((e) => {
       console.error(e)
     });
-
-    console.log('waiting 10 seconds to start')
 
     setTimeout(() => {
 
@@ -72,7 +74,7 @@ const spawnInterpreter = function (data, socket) {
     console.log('!!! SPAWNING')
 
     child = spawn(
-      `testdriver`,
+      `DEV=true testdriver`,
       [],
       {
         env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
@@ -81,14 +83,13 @@ const spawnInterpreter = function (data, socket) {
       
       }
     );
+    child.stdout.setEncoding('utf8')
   } catch (e) {
     console.log("caught", e);
     ipc.server.emit(
       socket,
-      JSON.stringify({
-        method: "stderr",
-        message: e.toString(),
-      })
+      'stderr',
+      e.toString()
     );
   }
 
@@ -98,15 +99,15 @@ const spawnInterpreter = function (data, socket) {
 
     ipc.server.emit(
       socket,
-      JSON.stringify({
-        method: "stderr",
-        message: e.toString(),
-      })
+      "stderr",
+      e.toString()
     );
   });
 
   let lineBuffer = "";
   child.stdout.on("data", async (data) => {
+
+    console.log(data.toString())
 
     lineBuffer += data.toString();
 
@@ -115,16 +116,19 @@ const spawnInterpreter = function (data, socket) {
       let lines = lineBuffer.split("\n");
 
       lineBuffer = lines.pop();
-
+      
+      console.log('[line] emitting via stdiout', lines.join("\n") + '\n')
       ipc.server.emit(
         socket,
-        JSON.stringify({method: 'stdout', 
-        message: lines.join("\n") + '\n'})
+        'stdout', 
+        lines.join("\n") + '\n'
       );
 
       
     }
     if (stripAnsi(lineBuffer).indexOf(">") === 0) {
+
+      console.log('detected prompt', lineBuffer)
 
       list = markdownToListArray(text);
 
@@ -138,13 +142,16 @@ const spawnInterpreter = function (data, socket) {
         child.kill();
       } else {
 
+        console.log('!!!!!!! INCREMENTING')
+
         let command = list[i];
         child.stdin.write(`${command}\n`);
         
+        console.log('[prompt] emitting via stdiout', lineBuffer)
         ipc.server.emit(
           socket,
-          JSON.stringify({method: 'stdout', 
-          message: lineBuffer})
+          'stdout',
+          lineBuffer
         );
 
         i++;
@@ -163,20 +170,16 @@ const spawnInterpreter = function (data, socket) {
   child.stderr.on("data", (data) => {
     ipc.server.emit(
       socket,
-      JSON.stringify({
-        method: "stderr",
-        message: data.toString(),
-      })
+      "stderr",
+      data.toString()
     );
   });
 
   child.on("close", (code) => {
     ipc.server.emit(
       socket,
-      JSON.stringify({
-        method: "close",
-        message: `child process exited with code ${code}\n`,
-      })
+      "close",
+      code
     );
   });
 };
@@ -229,20 +232,16 @@ const spawnShell = function (data, socket) {
       } else {
         ipc.server.emit(
           socket,
-          JSON.stringify({
-            method: "stderr",
-            message: `Prerun.sh file does not exist at ${prerunFilePath}`,
-          })
+          "stderr",
+          `Prerun.sh file does not exist at ${prerunFilePath}`
         );
         resolve();
       }
     } catch (e) {
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stderr",
-          message: e.toString(),
-        })
+        "stderr",
+        e.toString()
       );
       resolve();
     }
@@ -251,10 +250,8 @@ const spawnShell = function (data, socket) {
       console.log("close", exitCode);
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stderr",
-          message: "Child process exited with code " + exitCode + "\n\n",
-        })
+        "stderr",
+        "Child process exited with code " + exitCode + "\n\n"
       );
       resolve();
     });
@@ -263,10 +260,8 @@ const spawnShell = function (data, socket) {
       console.log("error", e);
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stderr",
-          message: e.toString() + "\n\n",
-        })
+        "stderr",
+        e.toString() + "\n\n"
       );
       resolve();
     });
@@ -274,10 +269,8 @@ const spawnShell = function (data, socket) {
     child.stdout.on("end", function () {
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stderr",
-          message: "Prerun.sh process end\n\n",
-        })
+        "stderr",
+        "Prerun.sh process end\n\n"
       );
       resolve();
     });
@@ -289,20 +282,16 @@ const spawnShell = function (data, socket) {
 
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stdout",
-          message: dataToSend,
-        })
+        "stdout",
+        dataToSend
       );
     });
 
     child.stderr.on("data", (data) => {
       ipc.server.emit(
         socket,
-        JSON.stringify({
-          method: "stdout",
-          message: data.toString(),
-        })
+        "stdout",
+        data.toString(),
       );
     });
   });

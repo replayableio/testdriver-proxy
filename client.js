@@ -9,7 +9,7 @@ ipc.config.id = "hello";
 // ipc.config.retry = 1500;
 ipc.config.sync = true;
 // ipc.config.rawBuffer = true;
-// ipc.config.encoding = "utf-8";
+ipc.config.encoding = "utf-8";
 ipc.config.silent = true;
 
 ipc.connectTo("world", function () {

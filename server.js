@@ -41,8 +41,6 @@ ipc.serve(function () {
 
   ipc.server.on("data", async (data, socket) => {
 
-    console.log('server data', JSON.parse(data.toString()));
-
     await spawnShell(data, socket).catch((e) => {
       console.error(e)
     });
@@ -70,8 +68,6 @@ const spawnInterpreter = function (data, socket) {
 
     const args = JSON.parse(data.toString());
     text = args[0];
-
-    console.log("args1", args[1]);
 
     console.log('!!! SPAWNING')
 

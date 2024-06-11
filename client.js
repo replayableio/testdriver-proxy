@@ -27,7 +27,7 @@ ipc.connectTo("world", function () {
   ipc.of.world.on("data", function (data) {
 
     try {
-      data = JSON.parse(data);
+      data = JSON.parse(data.toString());
 
       if (data.method == "status") {
         // console.info(data.message);
@@ -43,7 +43,8 @@ ipc.connectTo("world", function () {
         process.exit(0);
       }
     } catch (e) {
-      // console.error(e);
+      console.error(data.toString())
+      console.error(e);
     }
   });
 });

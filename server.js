@@ -1,6 +1,7 @@
 const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
-const fs = require('fs')
+const fs = require('fs');
+const { listenerCount, listeners } = require("node:process");
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
@@ -40,11 +41,13 @@ ipc.serve(function () {
 
   ipc.server.on("data", async (data, socket) => {
 
-    console.log(JSON.parse(data.toString()));
+    console.log('server data', JSON.parse(data.toString()));
 
     await spawnShell(data, socket).catch((e) => {
       console.error(e)
     });
+
+    console.log('waiting 10 seconds to start')
 
     setTimeout(() => {
 
@@ -65,10 +68,10 @@ const spawnInterpreter = function (data, socket) {
   let step = 0;
   try {
 
-    // console.log(data.toString());
-
     const args = JSON.parse(data.toString());
     text = args[0];
+
+    console.log("args1", args[1]);
 
     console.log('!!! SPAWNING')
 
@@ -106,13 +109,26 @@ const spawnInterpreter = function (data, socket) {
     );
   });
 
+  let lineBuffer = "";
   child.stdout.on("data", async (data) => {
 
-    let dataAsString = data.toString();
+    lineBuffer += data.toString();
 
-    console.log(stripAnsi(last(dataAsString.split("\n"))))
+    if (lineBuffer.indexOf("\n") > -1) {
 
-    if (stripAnsi(last(dataAsString.split("\n"))).indexOf('>') === 0) {
+      let lines = lineBuffer.split("\n");
+
+      lineBuffer = lines.pop();
+
+      ipc.server.emit(
+        socket,
+        JSON.stringify({method: 'stdout', 
+        message: lines.join("\n") + '\n'})
+      );
+
+      
+    }
+    if (stripAnsi(lineBuffer).indexOf(">") === 0) {
 
       list = markdownToListArray(text);
 
@@ -125,21 +141,26 @@ const spawnInterpreter = function (data, socket) {
         child.stderr.destroy();
         child.kill();
       } else {
+
         let command = list[i];
         child.stdin.write(`${command}\n`);
+        
+        ipc.server.emit(
+          socket,
+          JSON.stringify({method: 'stdout', 
+          message: lineBuffer})
+        );
+
         i++;
       }
 
+      lineBuffer = "";
+
       step += 1;
+
     }
 
-    ipc.server.emit(
-      socket,
-      JSON.stringify({
-        method: "stdout",
-        message: dataAsString,
-      })
-    );
+
 
   });
 
@@ -266,15 +287,15 @@ const spawnShell = function (data, socket) {
     });
 
     child.stdout.on("data", async (data) => {
-      let dataAsString = data.toString();
+      let dataToSend = data.toString();
 
-      console.log("dataAsString", dataAsString);
+      console.log("dataToSend", dataToSend);
 
       ipc.server.emit(
         socket,
         JSON.stringify({
           method: "stdout",
-          message: dataAsString,
+          message: dataToSend,
         })
       );
     });

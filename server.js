@@ -110,6 +110,8 @@ const spawnInterpreter = function (data, socket) {
 
     let dataAsString = data.toString();
 
+    console.log(stripAnsi(last(dataAsString.split("\n"))))
+
     if (stripAnsi(last(dataAsString.split("\n"))).indexOf('>') === 0) {
 
       list = markdownToListArray(text);
@@ -130,7 +132,15 @@ const spawnInterpreter = function (data, socket) {
 
       step += 1;
     }
-    
+
+    ipc.server.emit(
+      socket,
+      JSON.stringify({
+        method: "stdout",
+        message: dataAsString,
+      })
+    );
+
   });
 
   child.stderr.on("data", (data) => {

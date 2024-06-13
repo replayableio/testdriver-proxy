@@ -117,21 +117,11 @@ const spawnInterpreter = function (data, socket) {
     lineBuffer = data.toString();
     let lines = lineBuffer.split("\n");
 
-    // if (lineBuffer.indexOf("\n") > -1) {
-
-    //   // lineBuffer = lines.pop();
-      
-    //   // console.log(lineBuffer)
-    //   // console.log('lines', lines.join("\n") + '\n')
-
-      ipc.server.emit(
-        socket,
-        'stdout', 
-        data
-      );
-
-      
-    // }
+    ipc.server.emit(
+      socket,
+      'stdout', 
+      data
+    );
 
     if (stripAnsi(lines[lines.length -1]).indexOf(">") === 0) {
 
@@ -144,12 +134,6 @@ const spawnInterpreter = function (data, socket) {
 
         let command = list[i];
         child.stdin.write(`${command}\n`);
-        
-        // ipc.server.emit(
-        //   socket,
-        //   'stdout',
-        //   lineBuffer
-        // );
 
         i++;
       }

@@ -73,6 +73,11 @@ const spawnInterpreter = function (data, socket) {
 
     console.log('!!! SPAWNING')
 
+    list = markdownToListArray(text);
+
+    list.push('/summarize');
+    list.push('/quit');
+
     child = spawn(
       `testdriver`,
       [],
@@ -107,33 +112,28 @@ const spawnInterpreter = function (data, socket) {
   let lineBuffer = "";
   child.stdout.on("data", async (data) => {
 
-    console.log(data.toString())
+    console.log('event', data.toString())
 
-    lineBuffer += data.toString();
+    lineBuffer = data.toString();
+    let lines = lineBuffer.split("\n");
 
-    if (lineBuffer.indexOf("\n") > -1) {
+    // if (lineBuffer.indexOf("\n") > -1) {
 
-      let lines = lineBuffer.split("\n");
-
-      lineBuffer = lines.pop();
+    //   // lineBuffer = lines.pop();
       
-      console.log('[line] emitting via stdiout', lines.join("\n") + '\n')
+    //   // console.log(lineBuffer)
+    //   // console.log('lines', lines.join("\n") + '\n')
+
       ipc.server.emit(
         socket,
         'stdout', 
-        lines.join("\n") + '\n'
+        data
       );
 
       
-    }
-    if (stripAnsi(lineBuffer).indexOf(">") === 0) {
+    // }
 
-      console.log('detected prompt', lineBuffer)
-
-      list = markdownToListArray(text);
-
-      list.push('/summarize');
-      list.push('/quit');
+    if (stripAnsi(lines[lines.length -1]).indexOf(">") === 0) {
 
       if (!list[i]) {
         child.stdin.end();
@@ -142,17 +142,14 @@ const spawnInterpreter = function (data, socket) {
         child.kill();
       } else {
 
-        console.log('!!!!!!! INCREMENTING')
-
         let command = list[i];
         child.stdin.write(`${command}\n`);
         
-        console.log('[prompt] emitting via stdiout', lineBuffer)
-        ipc.server.emit(
-          socket,
-          'stdout',
-          lineBuffer
-        );
+        // ipc.server.emit(
+        //   socket,
+        //   'stdout',
+        //   lineBuffer
+        // );
 
         i++;
       }

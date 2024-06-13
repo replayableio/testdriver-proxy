@@ -31,6 +31,7 @@ ipc.connectTo("world", function () {
     console.log('status', data.toString())
   });
   ipc.of['world'].on("stdout", function (data) {
+    // console.log('stdout', data.toString())
     process.stdout.write(data);
   });
   ipc.of['world'].on("stderr", function (data) {

@@ -112,16 +112,20 @@ const spawnInterpreter = function (data, socket) {
   let lineBuffer = "";
   child.stdout.on("data", async (data) => {
 
-    console.log('event', data.toString())
-
     lineBuffer = data.toString();
     let lines = lineBuffer.split("\n");
 
-    ipc.server.emit(
-      socket,
-      'stdout', 
-      data
-    );
+    let escaped = data.toString().replace(/\[\d+[A-Z]/g, '');
+
+    if (escaped.length) {
+
+      ipc.server.emit(
+        socket,
+        'stdout', 
+        data
+      );
+      
+    }
 
     if (stripAnsi(lines[lines.length -1]).indexOf(">") === 0) {
 

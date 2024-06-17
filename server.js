@@ -1,7 +1,6 @@
 const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require('fs');
-const { listenerCount, listeners } = require("node:process");
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
@@ -115,17 +114,11 @@ const spawnInterpreter = function (data, socket) {
     lineBuffer = data.toString();
     let lines = lineBuffer.split("\n");
 
-    let escaped = data.toString().replace(/\[\d+[A-Z]/g, '');
-
-    if (escaped.length) {
-
-      ipc.server.emit(
-        socket,
-        'stdout', 
-        data
-      );
-      
-    }
+    ipc.server.emit(
+      socket,
+      'stdout', 
+      lineBuffer
+    );
 
     if (stripAnsi(lines[lines.length -1]).indexOf(">") === 0) {
 

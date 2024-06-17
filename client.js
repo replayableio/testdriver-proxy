@@ -12,6 +12,18 @@ ipc.config.sync = true;
 ipc.config.encoding = "utf-8";
 ipc.config.silent = true;
 
+function removeAnsiControlChars(input) {
+  // Regular expression to match ANSI control characters except color codes
+  const controlCharRegex = /(?:\u001b\[\d*G|\u001b\[\d*;?\d*[ABCDHJK])/g;
+
+  // Return the string after removing the control characters
+  return input.replace(controlCharRegex, '');
+}
+
+
+// const pattern = /\u001b\[1G|\u001b\[3G/g;
+const pattern = /\x1b\[1G|\x1b\[3G/g;
+
 ipc.connectTo("world", function () {
   ipc.of['world'].on("connect", function () {
 
@@ -31,8 +43,13 @@ ipc.connectTo("world", function () {
     console.log('status', data.toString())
   });
   ipc.of['world'].on("stdout", function (data) {
-    // console.log('stdout', data.toString())
-    process.stdout.write(data);
+
+    let dataEscaped = JSON.stringify(data);
+
+    // see the outpout
+    // console.log(JSON.stringify(removeAnsiControlChars(JSON.parse(dataEscaped))))
+
+    process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
   ipc.of['world'].on("stderr", function (data) {
     process.stderr.write(data);

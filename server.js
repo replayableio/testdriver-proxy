@@ -151,6 +151,13 @@ const spawnInterpreter = function (data, socket) {
   });
 
   child.on("close", (code) => {
+
+
+    console.log(code, "close")
+    if (typeof code !== "number") {
+      code = 0;
+    }
+
     ipc.server.emit(
       socket,
       "close",

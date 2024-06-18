@@ -74,9 +74,6 @@ const spawnInterpreter = function (data, socket) {
 
     list = markdownToListArray(text);
 
-    list.push('/summarize');
-    list.push('/quit');
-
     child = spawn(
       `testdriver`,
       [],

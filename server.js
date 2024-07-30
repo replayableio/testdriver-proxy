@@ -1,6 +1,7 @@
 const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require('fs');
+const chalk = require("chalk");
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
@@ -189,7 +190,15 @@ const spawnShell = function (data, socket) {
       if (prerun) { // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
 
-        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
+        ipc.server.emit(
+          socket,
+          "stdout",
+          chalk.green('TestDriver: ') + chalk.yellow('Running Prerun Script') + '\n\n```.testdriver/prerun.sh\n' + prerun + '\n\n```'
+        );
+
+        let prerunScript = prerun.replace(/\\n/g, '\n');
+
+        try {fs.writeFileSync(prerunFilePath, prerunScript, {flag: 'w+'});} catch (e) {
           console.error(e)
         }
       } else {
@@ -206,7 +215,7 @@ const spawnShell = function (data, socket) {
           `source`,
           [prerunFilePath],
           {
-            env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+            env: { ...process.env, DASHCAM_API_KEY: key }, // FORCE_COLOR: true,  will enable advanced rendering
             shell: true,
             windowsHide: true,
           }
@@ -232,8 +241,8 @@ const spawnShell = function (data, socket) {
       console.log("close", exitCode);
       ipc.server.emit(
         socket,
-        "stderr",
-        "Child process exited with code " + exitCode + "\n\n"
+        "stdout",
+        "Prerun.sh exited with code " + exitCode + "\n\n"
       );
       resolve();
     });
@@ -243,16 +252,17 @@ const spawnShell = function (data, socket) {
       ipc.server.emit(
         socket,
         "stderr",
-        e.toString() + "\n\n"
+        e.toString() + "\n"
       );
       resolve();
     });
 
     child.stdout.on("end", function () {
+      console.log('end')
       ipc.server.emit(
         socket,
-        "stderr",
-        "Prerun.sh process end\n\n"
+        "stdout",
+        "Prerun.sh process end\n"
       );
       resolve();
     });
@@ -270,9 +280,10 @@ const spawnShell = function (data, socket) {
     });
 
     child.stderr.on("data", (data) => {
+      console.log('std err', data.toString())
       ipc.server.emit(
         socket,
-        "stdout",
+        "stderr",
         data.toString(),
       );
     });

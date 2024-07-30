@@ -1,3 +1,4 @@
+const chalk = require("chalk");
 const ipc = require("@node-ipc/node-ipc").default;
 
 if (process.argv.length === 2) {
@@ -20,14 +21,13 @@ function removeAnsiControlChars(input) {
   return input.replace(controlCharRegex, '');
 }
 
-
 // const pattern = /\u001b\[1G|\u001b\[3G/g;
 const pattern = /\x1b\[1G|\x1b\[3G/g;
 
 ipc.connectTo("world", function () {
   ipc.of['world'].on("connect", function () {
 
-    console.log('connect')
+    console.log(chalk.green('TestDriver:'), 'Initialized');
         
     let text = process.argv[2];
 
@@ -40,19 +40,15 @@ ipc.connectTo("world", function () {
   });
 
   ipc.of['world'].on("status", function (data) {
-    console.log('status', data.toString())
+    console.log(chalk.green('TestDriver:'), data.toString());
   });
   ipc.of['world'].on("stdout", function (data) {
-
-    let dataEscaped = JSON.stringify(data);
-
-    // see the outpout
-    // console.log(JSON.stringify(removeAnsiControlChars(JSON.parse(dataEscaped))))
-
-    process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
+    dataEscaped = JSON.stringify(data)
+    console.log(removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
   ipc.of['world'].on("stderr", function (data) {
-    process.stderr.write(data);
+    dataEscaped = JSON.stringify(data)
+    console.log(chalk.red('ERROR:'), removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
   ipc.of['world'].on("close", function (code) {
     process.exit(code || 0);

@@ -40,15 +40,13 @@ ipc.connectTo("world", function () {
   });
 
   ipc.of['world'].on("status", function (data) {
-    console.log(chalk.green('TestDriver:'), data.toString());
+    console.log(chalk.green('TestDriver:'), data.toString().charAt(0).toUpperCase() + data.toString().slice(1));
   });
   ipc.of['world'].on("stdout", function (data) {
-    dataEscaped = JSON.stringify(data)
-    console.log(removeAnsiControlChars(JSON.parse(dataEscaped)));
+    process.stdout.write(data);
   });
   ipc.of['world'].on("stderr", function (data) {
-    dataEscaped = JSON.stringify(data)
-    console.log(chalk.red('ERROR:'), removeAnsiControlChars(JSON.parse(dataEscaped)));
+    process.stderr.write('ERROR:', data);
   });
   ipc.of['world'].on("close", function (code) {
     process.exit(code || 0);

@@ -43,10 +43,30 @@ ipc.connectTo("world", function () {
     console.log(chalk.green('TestDriver:'), data.toString().charAt(0).toUpperCase() + data.toString().slice(1));
   });
   ipc.of['world'].on("stdout", function (data) {
-    process.stdout.write(data);
+
+    let dataEscaped = JSON.stringify(data);
+
+    // see the outpout
+    // console.log(JSON.stringify(removeAnsiControlChars(JSON.parse(dataEscaped))))
+
+    process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
   ipc.of['world'].on("stderr", function (data) {
-    process.stderr.write('ERROR:', data);
+    process.stderr.write(data);
+  });
+  ipc.of['world'].on("close", function (code) {
+    process.exit(code || 0);
+  });
+  ipc.of['world'].on("error", function (err) {
+    console.error(err);
+    process.exit(1);
+  });
+  ipc.of['world'].on("stdout", function (data) {
+    let dataEscaped = JSON.stringify(data);
+    process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
+  });
+  ipc.of['world'].on("stderr", function (data) {
+    process.stderr.write(data);
   });
   ipc.of['world'].on("close", function (code) {
     process.exit(code || 0);

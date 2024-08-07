@@ -128,7 +128,7 @@ const spawnInterpreter = function (data, socket) {
       } else {
 
         let command = list[i];
-        child.stdin.write(`${command}\n`);
+        child.stdin.write(`${command}\r\n`);
 
         i++;
       }
@@ -182,21 +182,25 @@ const spawnShell = function (data, socket) {
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
-      let prerunFilePath = `/tmp/testdriver-prerun.sh`;
+      let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
+      if(process.platform === "win32") {
+        prerunFilePath = 'C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1'
+      }
 
-      // Check if the prerun.sh file doesn't exist
-      // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
+
+      // Check if the prerun file doesn't exist
+      // this can happen if the repo supplies this file within `.testdriver/prerun`
       // mostly for backward compatibility      
       if (prerun) { // this should be swapped, prerun should take over
-        // Write prerun to the prerun.sh file
+        // Write prerun to the prerun file
 
         ipc.server.emit(
           socket,
           "stdout",
-          chalk.green('TestDriver: ') + chalk.yellow('Running Prerun Script') + '\n\n```.testdriver/prerun.sh\n' + prerun + '\n\n```'
+          chalk.green('TestDriver: ') + chalk.yellow('Running Prerun Script') + '\n\n```' + prerun + '\n\n```'
         );
 
-        let prerunScript = prerun.replace(/\\n/g, '\n');
+        let prerunScript = prerun.replace(/\\n/g, '\r\n');
 
         try {fs.writeFileSync(prerunFilePath, prerunScript, {flag: 'w+'});} catch (e) {
           console.error(e)
@@ -224,7 +228,7 @@ const spawnShell = function (data, socket) {
         ipc.server.emit(
           socket,
           "stderr",
-          `Prerun.sh file does not exist at ${prerunFilePath}`
+          `Prerun file does not exist at ${prerunFilePath}`
         );
         resolve();
       }
@@ -242,7 +246,7 @@ const spawnShell = function (data, socket) {
       ipc.server.emit(
         socket,
         "stdout",
-        "Prerun.sh exited with code " + exitCode + "\n\n"
+        "Prerun exited with code " + exitCode + "\n\n"
       );
       resolve();
     });
@@ -262,7 +266,7 @@ const spawnShell = function (data, socket) {
       ipc.server.emit(
         socket,
         "stdout",
-        "Prerun.sh process end\n"
+        "Prerun process end\n"
       );
       resolve();
     });

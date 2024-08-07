@@ -183,7 +183,7 @@ const spawnShell = function (data, socket) {
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
       let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
-      if(process.platform === "win32") {
+      if(process.platform !== "darwin") {
         prerunFilePath = 'C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1'
       }
 

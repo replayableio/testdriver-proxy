@@ -62,17 +62,23 @@ let i = 0;
 const spawnInterpreter = function (data, socket) {
   let child;
   let text;
+  let key;
   let step = 0;
   try {
     const args = JSON.parse(data.toString());
     text = args[0];
+    key = args[1];
 
     console.log("!!! SPAWNING");
 
     list = markdownToListArray(text);
 
     child = spawn(`testdriver`, [], {
-      env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
+      env: {
+        ...process.env,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || key,
+        FORCE_COLOR: true,
+      },
       shell: true,
       windowsHide: true,
     });
@@ -130,16 +136,11 @@ const spawnInterpreter = function (data, socket) {
 
 const spawnShell = function (data, socket) {
   let child;
-  let text;
-  let step = 0;
 
   return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
-
-      text = args[0];
-      key = args[1];
-      prerun = args[2];
+      const prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
       const prerunFilePath = path.join(
@@ -155,9 +156,14 @@ const spawnShell = function (data, socket) {
         // Write prerun to the prerun.sh file
 
         try {
-          fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, "\n"), {
-            flag: "w+",
-          });
+          fs.writeFileSync(
+            prerunFilePath,
+            prerun
+              .replace(/\\n/g, "\n")
+              .replace(/\\\\/g, "\\")
+              .replace(/\\"/g, '"'),
+            { flag: "w+" }
+          );
         } catch (e) {
           console.error(e);
         }

@@ -1,6 +1,13 @@
 const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
-const fs = require('fs');
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const platform = os.platform();
+if (!["darwin", "win32"].includes(platform)) {
+  throw new Error("Unsupported platform: " + platform);
+}
 
 ipc.config.id = "world";
 ipc.config.retry = 1500;
@@ -12,7 +19,7 @@ ipc.config.silent = true;
 // ipc.config.logger = () => {};
 
 // log the version from package.json
-console.log('testdriver-proxy version', require('./package.json').version)
+console.log("testdriver-proxy version", require("./package.json").version);
 
 function markdownToListArray(markdown) {
   // Normalize line breaks
@@ -33,30 +40,21 @@ function markdownToListArray(markdown) {
 
 ipc.serve(function () {
   ipc.server.on("connect", function (socket) {
-    ipc.server.emit(
-      socket,
-      "status",
-      "connected"
-    );
+    ipc.server.emit(socket, "status", "connected");
   });
 
   ipc.server.on("command", async (data, socket) => {
-
-    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command');
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
 
     await spawnShell(data, socket).catch((e) => {
-      console.error(e)
+      console.error(e);
     });
 
     setTimeout(() => {
-
       // give prerun tiem to resolve, launch an app, etc
       // this gives chrome time to launch, so prompts assume prerun has resolved
       spawnInterpreter(data, socket);
-
-    }, 5000)
-
-    
+    }, 5000);
   });
 });
 
@@ -66,68 +64,46 @@ const spawnInterpreter = function (data, socket) {
   let text;
   let step = 0;
   try {
-
     const args = JSON.parse(data.toString());
     text = args[0];
 
-    console.log('!!! SPAWNING')
+    console.log("!!! SPAWNING");
 
     list = markdownToListArray(text);
 
-    child = spawn(
-      `testdriver`,
-      [],
-      {
-        env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
-        shell: true,
-        windowsHide: true,
-      
-      }
-    );
-    child.stdout.setEncoding('utf8')
+    child = spawn(`testdriver`, [], {
+      env: { ...process.env, FORCE_COLOR: true }, // FORCE_COLOR: true,  will enable advanced rendering
+      shell: true,
+      windowsHide: true,
+    });
+    child.stdout.setEncoding("utf8");
   } catch (e) {
     console.log("caught", e);
-    ipc.server.emit(
-      socket,
-      'stderr',
-      e.toString()
-    );
+    ipc.server.emit(socket, "stderr", e.toString());
   }
 
   child.on("error", function (e) {
-
     console.log("error", e);
 
-    ipc.server.emit(
-      socket,
-      "stderr",
-      e.toString()
-    );
+    ipc.server.emit(socket, "stderr", e.toString());
   });
 
   let lineBuffer = "";
   child.stdout.on("data", async (data) => {
-
     lineBuffer = data.toString();
     let lines = lineBuffer.split("\n");
 
-    ipc.server.emit(
-      socket,
-      'stdout', 
-      lineBuffer
-    );
+    ipc.server.emit(socket, "stdout", lineBuffer);
 
-    if (stripAnsi(lines[lines.length -1]).indexOf(">") === 0) {
-
+    if (stripAnsi(lines[lines.length - 1]).indexOf(">") === 0) {
       if (!list[i]) {
         child.stdin.end();
         child.stdout.destroy();
         child.stderr.destroy();
         child.kill();
       } else {
-
         let command = list[i];
-        child.stdin.write(`${command}\n`);
+        child.stdin.write(`${command}${platform === "win32" ? "\r" : ""}\n`);
 
         i++;
       }
@@ -135,34 +111,20 @@ const spawnInterpreter = function (data, socket) {
       lineBuffer = "";
 
       step += 1;
-
     }
-
-
-
   });
 
   child.stderr.on("data", (data) => {
-    ipc.server.emit(
-      socket,
-      "stderr",
-      data.toString()
-    );
+    ipc.server.emit(socket, "stderr", data.toString());
   });
 
   child.on("close", (code) => {
-
-
-    console.log(code, "close")
+    console.log(code, "close");
     if (typeof code !== "number") {
       code = 0;
     }
 
-    ipc.server.emit(
-      socket,
-      "close",
-      code
-    );
+    ipc.server.emit(socket, "close", code);
   });
 };
 
@@ -180,51 +142,63 @@ const spawnShell = function (data, socket) {
       prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
-
-      let prerunFilePath = `/tmp/testdriver-prerun.sh`;
+      const prerunFilePath = path.join(
+        os.tmpdir(),
+        `testdriver-prerun.${platform === "darwin" ? "sh" : "ps1"}`
+      );
 
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
-      // mostly for backward compatibility      
-      if (prerun) { // this should be swapped, prerun should take over
+      // mostly for backward compatibility
+      if (prerun) {
+        // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
 
-        try {fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, '\n'), {flag: 'w+'});} catch (e) {
-          console.error(e)
+        try {
+          fs.writeFileSync(prerunFilePath, prerun.replace(/\\n/g, "\n"), {
+            flag: "w+",
+          });
+        } catch (e) {
+          console.error(e);
         }
       } else {
       }
 
+      switch (platform) {
+        case "darwin":
+          toRun = {
+            command: "source",
+            args: [prerunFilePath],
+          };
+        case "win32":
+          toRun = {
+            command: "powershell",
+            args: [prerunFilePath],
+          };
+      }
       console.log(
         "spawning ",
-        `source ${prerunFilePath}`
+        `${toRun.command} ${toRun.args
+          .map((arg) => JSON.stringify(arg))
+          .join(" ")}`
       );
 
       if (fs.existsSync(prerunFilePath)) {
-
-        child = spawn(
-          `source`,
-          [prerunFilePath],
-          {
-            env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
-            shell: true,
-            windowsHide: true,
-          }
-        );
+        child = spawn(toRun.command, toRun.args, {
+          env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+          shell: true,
+          windowsHide: true,
+        });
       } else {
         ipc.server.emit(
           socket,
           "stderr",
-          `Prerun.sh file does not exist at ${prerunFilePath}`
+          `Prerun file does not exist at ${prerunFilePath}`
         );
         resolve();
       }
     } catch (e) {
-      ipc.server.emit(
-        socket,
-        "stderr",
-        e.toString()
-      );
+      ipc.server.emit(socket, "stderr", e.toString());
       resolve();
     }
 
@@ -240,20 +214,12 @@ const spawnShell = function (data, socket) {
 
     child.on("error", function (e) {
       console.log("error", e);
-      ipc.server.emit(
-        socket,
-        "stderr",
-        e.toString() + "\n\n"
-      );
+      ipc.server.emit(socket, "stderr", e.toString() + "\n\n");
       resolve();
     });
 
     child.stdout.on("end", function () {
-      ipc.server.emit(
-        socket,
-        "stderr",
-        "Prerun.sh process end\n\n"
-      );
+      ipc.server.emit(socket, "stderr", "Prerun.sh process end\n\n");
       resolve();
     });
 
@@ -262,19 +228,11 @@ const spawnShell = function (data, socket) {
 
       console.log("dataToSend", dataToSend);
 
-      ipc.server.emit(
-        socket,
-        "stdout",
-        dataToSend
-      );
+      ipc.server.emit(socket, "stdout", dataToSend);
     });
 
     child.stderr.on("data", (data) => {
-      ipc.server.emit(
-        socket,
-        "stdout",
-        data.toString(),
-      );
+      ipc.server.emit(socket, "stdout", data.toString());
     });
   });
 };

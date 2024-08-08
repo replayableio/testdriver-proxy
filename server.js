@@ -148,12 +148,18 @@ const spawnShell = function (data, socket) {
         prerunFilePath = 'C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1'
       }
 
+
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
       // mostly for backward compatibility
-      if (prerun) {
+      if (fs.existsSync(prerunFilePath)) {
         // this should be swapped, prerun should take over
         // Write prerun to the prerun.sh file
+        ipc.server.emit(socket, "stdout", `Using prerun supplied in repository`);
+        
+      } else if (prerun) {
+
+        ipc.server.emit(socket, "stdout", `Using prerun supplied as parameter`);
 
         try {
           fs.writeFileSync(
@@ -167,7 +173,6 @@ const spawnShell = function (data, socket) {
         } catch (e) {
           console.error(e);
         }
-      } else {
       }
 
       switch (platform) {
@@ -261,4 +266,6 @@ function stripAnsi(string) {
   return string.replace(ansiRegex, "");
 }
 
-const last = (arr) => arr[arr.length - 1];
+setInterval(function() {
+  console.log("server running... " + new Date());
+}, 1000 * 20);

@@ -143,10 +143,10 @@ const spawnShell = function (data, socket) {
       const prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
-      const prerunFilePath = path.join(
-        os.tmpdir(),
-        `testdriver-prerun.${platform === "darwin" ? "sh" : "ps1"}`
-      );
+      let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
+      if(process.platform !== "darwin") {
+        prerunFilePath = 'C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1'
+      }
 
       // Check if the prerun.sh file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun.sh`

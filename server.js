@@ -1,11 +1,9 @@
 const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require("fs");
-const os = require("os");
-const path = require("path");
+const chalk = require("chalk");
 
-const platform = os.platform();
-if (!["darwin", "win32"].includes(platform)) {
+if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + platform);
 }
 
@@ -109,7 +107,7 @@ const spawnInterpreter = function (data, socket) {
         child.kill();
       } else {
         let command = list[i];
-        child.stdin.write(`${command}${platform === "win32" ? "\r" : ""}\n`);
+        child.stdin.write(`${command}\r\n`);
 
         i++;
       }
@@ -143,38 +141,40 @@ const spawnShell = function (data, socket) {
       const prerun = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
+
       let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
-      if(process.platform !== "darwin") {
-        prerunFilePath = 'C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1'
+      if (process.platform !== "darwin") {
+        prerunFilePath =
+          "C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1";
       }
 
-
-      // Check if the prerun.sh file doesn't exist
-      // this can happen if the repo supplies this file within `.testdriver/prerun.sh`
+      // Check if the prerun file doesn't exist
+      // this can happen if the repo supplies this file within `.testdriver/prerun`
       // mostly for backward compatibility
-      if (fs.existsSync(prerunFilePath)) {
+      if (prerun) {
         // this should be swapped, prerun should take over
-        // Write prerun to the prerun.sh file
-        ipc.server.emit(socket, "stdout", `Using prerun supplied in repository`);
-        
-      } else if (prerun) {
+        // Write prerun to the prerun file
 
-        ipc.server.emit(socket, "stdout", `Using prerun supplied as parameter`);
+        ipc.server.emit(
+          socket,
+          "stdout",
+          chalk.green("TestDriver: ") +
+            chalk.yellow("Running Prerun Script") +
+            "\n\n```" +
+            prerun +
+            "\n\n```"
+        );
+
+        let prerunScript = prerun.replace(/\\n/g, "\r\n");
 
         try {
-          fs.writeFileSync(
-            prerunFilePath,
-            prerun
-              .replace(/\\n/g, "\n")
-              .replace(/\\\\/g, "\\")
-              .replace(/\\"/g, '"'),
-            { flag: "w+" }
-          );
+          fs.writeFileSync(prerunFilePath, prerunScript, { flag: "w+" });
         } catch (e) {
           console.error(e);
         }
       }
 
+      let toRun;
       switch (platform) {
         case "darwin":
           toRun = {
@@ -194,7 +194,7 @@ const spawnShell = function (data, socket) {
           .join(" ")}`
       );
 
-      if (fs.existsSync(prerunFilePath)) {
+      if (fs.existsSync(prerunFilePath) && toRun) {
         child = spawn(toRun.command, toRun.args, {
           env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
           shell: true,
@@ -217,20 +217,21 @@ const spawnShell = function (data, socket) {
       console.log("close", exitCode);
       ipc.server.emit(
         socket,
-        "stderr",
-        "Child process exited with code " + exitCode + "\n\n"
+        "stdout",
+        "Prerun exited with code " + exitCode + "\n\n"
       );
       resolve();
     });
 
     child.on("error", function (e) {
       console.log("error", e);
-      ipc.server.emit(socket, "stderr", e.toString() + "\n\n");
+      ipc.server.emit(socket, "stderr", e.toString() + "\n");
       resolve();
     });
 
     child.stdout.on("end", function () {
-      ipc.server.emit(socket, "stderr", "Prerun.sh process end\n\n");
+      console.log("end");
+      ipc.server.emit(socket, "stdout", "Prerun process end\n");
       resolve();
     });
 
@@ -243,7 +244,8 @@ const spawnShell = function (data, socket) {
     });
 
     child.stderr.on("data", (data) => {
-      ipc.server.emit(socket, "stdout", data.toString());
+      console.log("std err", data.toString());
+      ipc.server.emit(socket, "stderr", data.toString());
     });
   });
 };
@@ -266,6 +268,6 @@ function stripAnsi(string) {
   return string.replace(ansiRegex, "");
 }
 
-setInterval(function() {
+setInterval(function () {
   console.log("server running... " + new Date());
 }, 1000 * 20);

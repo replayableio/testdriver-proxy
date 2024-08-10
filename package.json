@@ -1,6 +1,6 @@
 {
   "name": "testdriver-proxy",
-  "version": "0.9.7",
+  "version": "0.10.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@node-ipc/node-ipc": "^11.0.3",
+    "chalk": "^4.1.2",
     "dashcam-chrome": "^0.2.3"
   },
   "bin": {

@@ -1,3 +1,4 @@
+const chalk = require("chalk");
 const ipc = require("@node-ipc/node-ipc").default;
 
 if (process.argv.length === 2) {
@@ -20,14 +21,13 @@ function removeAnsiControlChars(input) {
   return input.replace(controlCharRegex, '');
 }
 
-
 // const pattern = /\u001b\[1G|\u001b\[3G/g;
 const pattern = /\x1b\[1G|\x1b\[3G/g;
 
 ipc.connectTo("world", function () {
   ipc.of['world'].on("connect", function () {
 
-    console.log('connect')
+    console.log(chalk.green('TestDriver:'), 'Initialized');
         
     let text = process.argv[2];
 

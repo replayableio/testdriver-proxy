@@ -175,7 +175,7 @@ const spawnShell = function (data, socket) {
       }
 
       let toRun;
-      switch (platform) {
+      switch (process.platform) {
         case "darwin":
           toRun = {
             command: "source",

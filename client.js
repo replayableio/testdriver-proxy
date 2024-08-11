@@ -1,3 +1,4 @@
+const fs = require("fs");
 const chalk = require("chalk");
 const ipc = require("@node-ipc/node-ipc").default;
 
@@ -18,32 +19,34 @@ function removeAnsiControlChars(input) {
   const controlCharRegex = /(?:\u001b\[\d*G|\u001b\[\d*;?\d*[ABCDHJK])/g;
 
   // Return the string after removing the control characters
-  return input.replace(controlCharRegex, '');
+  return input.replace(controlCharRegex, "");
 }
 
 // const pattern = /\u001b\[1G|\u001b\[3G/g;
 const pattern = /\x1b\[1G|\x1b\[3G/g;
 
 ipc.connectTo("world", function () {
-  ipc.of['world'].on("connect", function () {
+  ipc.of["world"].on("connect", function () {
+    console.log(chalk.green("TestDriver:"), "Initialized");
 
-    console.log(chalk.green('TestDriver:'), 'Initialized');
-        
     let text = process.argv[2];
 
     text = text.split("\n").join(" ");
 
     const apiKey = process.argv[3];
-    const prerun = process.argv[4];
-
-    ipc.of['world'].emit('command', JSON.stringify([text, apiKey, prerun]));  
+    let prerun = process.argv[4];
+    try {
+      if (fs.existsSync(prerun)) {
+        prerun = fs.readFileSync(prerun, "utf-8");
+      }
+    } catch (err) {}
+    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun]));
   });
 
-  ipc.of['world'].on("status", function (data) {
-    console.log('status', data.toString())
+  ipc.of["world"].on("status", function (data) {
+    console.log("status", data.toString());
   });
-  ipc.of['world'].on("stdout", function (data) {
-
+  ipc.of["world"].on("stdout", function (data) {
     let dataEscaped = JSON.stringify(data);
 
     // see the outpout
@@ -51,13 +54,13 @@ ipc.connectTo("world", function () {
 
     process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
-  ipc.of['world'].on("stderr", function (data) {
+  ipc.of["world"].on("stderr", function (data) {
     process.stderr.write(data);
   });
-  ipc.of['world'].on("close", function (code) {
+  ipc.of["world"].on("close", function (code) {
     process.exit(code || 0);
   });
-  ipc.of['world'].on("error", function (err) {
+  ipc.of["world"].on("error", function (err) {
     console.error(err);
     process.exit(1);
   });

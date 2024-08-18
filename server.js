@@ -66,6 +66,7 @@ const spawnInterpreter = function (data, socket) {
     const args = JSON.parse(data.toString());
     text = args[0];
     key = args[1];
+    cwd = args[3];
 
     console.log("!!! SPAWNING");
 
@@ -77,6 +78,7 @@ const spawnInterpreter = function (data, socket) {
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || key,
         FORCE_COLOR: true,
       },
+      cwd,
       shell: true,
       windowsHide: true,
     });

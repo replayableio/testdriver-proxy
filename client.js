@@ -40,7 +40,7 @@ ipc.connectTo("world", function () {
         prerun = fs.readFileSync(prerun, "utf-8");
       }
     } catch (err) {}
-    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun]));
+    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd()]));
   });
 
   ipc.of["world"].on("status", function (data) {

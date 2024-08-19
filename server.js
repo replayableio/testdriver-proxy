@@ -175,7 +175,10 @@ const spawnShell = function (data, socket) {
             chalk.yellow("Running Prerun Script") +
             "\n\n```\n" +
             prerunScript +
-            "\n```\n\n"
+            "\n```\n\nFrom: " +
+            '"' +
+            prerunFilePath +
+            '"'
         );
 
         if (process.platform === "win32") {

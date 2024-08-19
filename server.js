@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("path");
 
 if (!["darwin", "win32"].includes(process.platform)) {
-  throw new Error("Unsupported platform: " + platform);
+  throw new Error("Unsupported platform: " + process.platform);
 }
 
 ipc.config.id = "world";
@@ -146,14 +146,14 @@ const spawnShell = function (data, socket) {
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
-      let prerunFilePath = `prerun.sh`;
-      if (process.platform !== "win32") {
+      let prerunFilePath = "prerun.sh";
+      if (process.platform === "win32") {
         prerunFilePath = "prerun.ps1";
       }
 
-      if (process.TESTDRIVER_REPO_PATH) {
+      if (process.env.TESTDRIVER_REPO_PATH) {
         prerunFilePath = path.join(
-          process.TESTDRIVER_REPO_PATH,
+          process.env.TESTDRIVER_REPO_PATH,
           ".testdriver",
           prerunFilePath
         );
@@ -199,11 +199,13 @@ const spawnShell = function (data, socket) {
             command: "source",
             args: [prerunFilePath],
           };
+          break;
         case "win32":
           toRun = {
             command: "powershell",
             args: [prerunFilePath],
           };
+          break;
       }
       console.log(
         "spawning ",

@@ -2,6 +2,7 @@ const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require("fs");
 const chalk = require("chalk");
+const { tmpdir } = require("node:os");
 
 if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + platform);
@@ -140,20 +141,29 @@ const spawnShell = function (data, socket) {
   return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
-      const prerun = args[2];
+      let prerunScript = args[2];
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
-      let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
-      if (process.platform !== "darwin") {
-        prerunFilePath =
-          "C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1";
+      let prerunFilePath = `prerun.sh`;
+      if (process.platform !== "win32") {
+        prerunFilePath = "prerun.ps1";
+      }
+
+      if (process.TESTDRIVER_REPO_PATH) {
+        prerunFilePath = path.join(
+          process.TESTDRIVER_REPO_PATH,
+          ".testdriver",
+          prerunFilePath
+        );
+      } else {
+        prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
       }
 
       // Check if the prerun file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun`
       // mostly for backward compatibility
-      if (prerun) {
+      if (prerunScript) {
         // this should be swapped, prerun should take over
         // Write prerun to the prerun file
 
@@ -162,12 +172,14 @@ const spawnShell = function (data, socket) {
           "stdout",
           chalk.green("TestDriver: ") +
             chalk.yellow("Running Prerun Script") +
-            "\n\n```" +
-            prerun +
-            "\n\n```"
+            "\n\n```\n" +
+            prerunScript +
+            "\n```\n\n"
         );
 
-        let prerunScript = prerun.replace(/\\n/g, "\r\n");
+        if (process.platform === "win32") {
+          prerunScript = prerunScript.replace(/(?<!\r)\n/g, "\r\n");
+        }
 
         try {
           fs.writeFileSync(prerunFilePath, prerunScript, { flag: "w+" });

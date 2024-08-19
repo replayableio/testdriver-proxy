@@ -3,6 +3,7 @@ const ipc = require("@node-ipc/node-ipc").default;
 const fs = require("fs");
 const chalk = require("chalk");
 const os = require("node:os");
+const path = require("path");
 
 if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + platform);

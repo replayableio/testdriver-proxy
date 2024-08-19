@@ -2,7 +2,7 @@ const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require("fs");
 const chalk = require("chalk");
-const { tmpdir } = require("node:os");
+const os = require("node:os");
 
 if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + platform);

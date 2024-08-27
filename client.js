@@ -35,12 +35,15 @@ ipc.connectTo("world", function () {
 
     const apiKey = process.argv[3];
     let prerun = process.argv[4];
+    const testdriverRepoPath = process.env.TESTDRIVER_REPO_PATH || null;
+    const testdriveraiVersion = process.env.TESTDRIVERAI_VERSION || "latest";
+
     try {
       if (fs.existsSync(prerun)) {
         prerun = fs.readFileSync(prerun, "utf-8");
       }
-    } catch (err) {}
-    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd()]));
+    } catch (err) { }
+    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd(), testdriveraiVersion, testdriverRepoPath]));
   });
 
   ipc.of["world"].on("status", function (data) {

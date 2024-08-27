@@ -46,6 +46,11 @@ ipc.serve(function () {
   ipc.server.on("command", async (data, socket) => {
     console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
 
+    await installTestdriver(data, socket).catch(err => {
+      ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
+      throw new Error("Failed to install testdriverai package");
+    })
+
     await spawnShell(data, socket).catch((e) => {
       console.error(e);
     });
@@ -57,6 +62,32 @@ ipc.serve(function () {
     }, 5000);
   });
 });
+
+const installTestdriver = async function (data, socket) {
+  return new Promise((resolve, reject) => {
+    try {
+      const args = JSON.parse(data.toString());
+      const testdriveraiVersion = args[4] || "latest";
+
+      const child = spawn("npm", ["install", "-g", `testdriverai@${testdriveraiVersion}`], {
+        env: process.env,
+        shell: true,
+        windowsHide: true,
+      })
+
+      child.on("error", function (e) {
+        reject(e);
+      })
+      child.on("exit", function (code) {
+        if (code === 0) resolve();
+        else reject()
+      })
+    } catch (err) {
+      reject(err)
+    }
+
+  })
+}
 
 let i = 0;
 const spawnInterpreter = function (data, socket) {
@@ -74,7 +105,7 @@ const spawnInterpreter = function (data, socket) {
 
     list = markdownToListArray(text);
 
-    child = spawn(`testdriver`, [], {
+    child = spawn(`testdriverai`, [], {
       env: {
         ...process.env,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || key,
@@ -143,6 +174,7 @@ const spawnShell = function (data, socket) {
     try {
       const args = JSON.parse(data.toString());
       let prerunScript = args[2];
+      const testdriverRepoPath = args[5] || process.env.TESTDRIVER_REPO_PATH;
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
@@ -151,12 +183,8 @@ const spawnShell = function (data, socket) {
         prerunFilePath = "prerun.ps1";
       }
 
-      if (process.env.TESTDRIVER_REPO_PATH) {
-        prerunFilePath = path.join(
-          process.env.TESTDRIVER_REPO_PATH,
-          ".testdriver",
-          prerunFilePath
-        );
+      if (testdriverRepoPath) {
+        prerunFilePath = path.join(testdriverRepoPath, ".testdriver", prerunFilePath);
       } else {
         prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
       }

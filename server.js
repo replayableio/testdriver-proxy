@@ -2,9 +2,11 @@ const { spawn } = require("node:child_process");
 const ipc = require("@node-ipc/node-ipc").default;
 const fs = require("fs");
 const chalk = require("chalk");
+const os = require("node:os");
+const path = require("path");
 
 if (!["darwin", "win32"].includes(process.platform)) {
-  throw new Error("Unsupported platform: " + platform);
+  throw new Error("Unsupported platform: " + process.platform);
 }
 
 ipc.config.id = "world";
@@ -44,6 +46,15 @@ ipc.serve(function () {
   ipc.server.on("command", async (data, socket) => {
     console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
 
+    await installTestdriver(data, socket)
+      .then(() => {
+        ipc.server.emit(socket, "stdout", "Successfully installed testdriverai package");
+      })
+      .catch(err => {
+        ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
+        throw new Error("Failed to install testdriverai package");
+      })
+
     await spawnShell(data, socket).catch((e) => {
       console.error(e);
     });
@@ -56,6 +67,36 @@ ipc.serve(function () {
   });
 });
 
+const installTestdriver = async function (data, socket) {
+  return new Promise((resolve, reject) => {
+    try {
+      const args = JSON.parse(data.toString());
+      const testdriveraiVersion = args[4] || "latest";
+
+      const child = spawn("npm", ["install", "-g", `testdriverai@${testdriveraiVersion}`], {
+        env: process.env,
+        shell: true,
+        windowsHide: true,
+      })
+
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
+      child.stderr.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
+      child.on("error", function (e) {
+        reject(e);
+      })
+      child.on("exit", function (code) {
+        if (code === 0) resolve();
+        else reject()
+      })
+    } catch (err) {
+      reject(err)
+    }
+
+  })
+}
+
 let i = 0;
 const spawnInterpreter = function (data, socket) {
   let child;
@@ -66,17 +107,19 @@ const spawnInterpreter = function (data, socket) {
     const args = JSON.parse(data.toString());
     text = args[0];
     key = args[1];
+    cwd = args[3];
 
     console.log("!!! SPAWNING");
 
     list = markdownToListArray(text);
 
-    child = spawn(`testdriver`, [], {
+    child = spawn(`testdriverai`, [], {
       env: {
         ...process.env,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || key,
         FORCE_COLOR: true,
       },
+      cwd,
       shell: true,
       windowsHide: true,
     });
@@ -138,20 +181,26 @@ const spawnShell = function (data, socket) {
   return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
-      const prerun = args[2];
+      let prerunScript = args[2];
+      const testdriverRepoPath = args[5] || process.env.TESTDRIVER_REPO_PATH;
 
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
-      let prerunFilePath = `~/actions-runner/_work/testdriver/testdriver/prerun.sh`;
-      if (process.platform !== "darwin") {
-        prerunFilePath =
-          "C:\\actions-runner\\_work\\testdriver\\testdriver\\.testdriver\\prerun.ps1";
+      let prerunFilePath = "prerun.sh";
+      if (process.platform === "win32") {
+        prerunFilePath = "prerun.ps1";
+      }
+
+      if (testdriverRepoPath) {
+        prerunFilePath = path.join(testdriverRepoPath, ".testdriver", prerunFilePath);
+      } else {
+        prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
       }
 
       // Check if the prerun file doesn't exist
       // this can happen if the repo supplies this file within `.testdriver/prerun`
       // mostly for backward compatibility
-      if (prerun) {
+      if (prerunScript) {
         // this should be swapped, prerun should take over
         // Write prerun to the prerun file
 
@@ -159,13 +208,18 @@ const spawnShell = function (data, socket) {
           socket,
           "stdout",
           chalk.green("TestDriver: ") +
-            chalk.yellow("Running Prerun Script") +
-            "\n\n```" +
-            prerun +
-            "\n\n```"
+          chalk.yellow("Running Prerun Script") +
+          "\n\n```\n" +
+          prerunScript +
+          "\n```\n\nFrom: " +
+          '"' +
+          prerunFilePath +
+          '"'
         );
 
-        let prerunScript = prerun.replace(/\\n/g, "\r\n");
+        if (process.platform === "win32") {
+          prerunScript = prerunScript.replace(/(?<!\r)\n/g, "\r\n");
+        }
 
         try {
           fs.writeFileSync(prerunFilePath, prerunScript, { flag: "w+" });
@@ -181,11 +235,13 @@ const spawnShell = function (data, socket) {
             command: "source",
             args: [prerunFilePath],
           };
+          break;
         case "win32":
           toRun = {
             command: "powershell",
             args: [prerunFilePath],
           };
+          break;
       }
       console.log(
         "spawning ",

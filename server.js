@@ -46,10 +46,14 @@ ipc.serve(function () {
   ipc.server.on("command", async (data, socket) => {
     console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
 
-    await installTestdriver(data, socket).catch(err => {
-      ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
-      throw new Error("Failed to install testdriverai package");
-    })
+    await installTestdriver(data, socket)
+      .then(() => {
+        ipc.server.emit(socket, "stdout", "Successfully installed testdriverai package");
+      })
+      .catch(err => {
+        ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
+        throw new Error("Failed to install testdriverai package");
+      })
 
     await spawnShell(data, socket).catch((e) => {
       console.error(e);
@@ -75,6 +79,10 @@ const installTestdriver = async function (data, socket) {
         windowsHide: true,
       })
 
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
+      child.stderr.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
       child.on("error", function (e) {
         reject(e);
       })
@@ -200,13 +208,13 @@ const spawnShell = function (data, socket) {
           socket,
           "stdout",
           chalk.green("TestDriver: ") +
-            chalk.yellow("Running Prerun Script") +
-            "\n\n```\n" +
-            prerunScript +
-            "\n```\n\nFrom: " +
-            '"' +
-            prerunFilePath +
-            '"'
+          chalk.yellow("Running Prerun Script") +
+          "\n\n```\n" +
+          prerunScript +
+          "\n```\n\nFrom: " +
+          '"' +
+          prerunFilePath +
+          '"'
         );
 
         if (process.platform === "win32") {

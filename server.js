@@ -192,13 +192,13 @@ const spawnShell = function (data, socket) {
       }
 
       if (testdriverRepoPath) {
-        prerunFilePath = path.join(testdriverRepoPath, ".testdriver", prerunFilePath);
+        prerunFilePath = path.join(testdriverRepoPath, "testdriver", prerunFilePath);
       } else {
         prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
       }
 
       // Check if the prerun file doesn't exist
-      // this can happen if the repo supplies this file within `.testdriver/prerun`
+      // this can happen if the repo supplies this file within `testdriver/prerun`
       // mostly for backward compatibility
       if (prerunScript) {
         // this should be swapped, prerun should take over

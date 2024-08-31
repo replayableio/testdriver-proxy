@@ -48,12 +48,20 @@ ipc.serve(function () {
 
     await installTestdriver(data, socket)
       .then(() => {
-        ipc.server.emit(socket, "stdout", "Successfully installed testdriverai package");
+        ipc.server.emit(
+          socket,
+          "stdout",
+          "Successfully installed testdriverai package"
+        );
       })
-      .catch(err => {
-        ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
+      .catch((err) => {
+        ipc.server.emit(
+          socket,
+          "stderr",
+          "Failed to install testdriverai package"
+        );
         throw new Error("Failed to install testdriverai package");
-      })
+      });
 
     await spawnShell(data, socket).catch((e) => {
       console.error(e);
@@ -73,29 +81,36 @@ const installTestdriver = async function (data, socket) {
       const args = JSON.parse(data.toString());
       const testdriveraiVersion = args[4] || "latest";
 
-      const child = spawn("npm", ["install", "-g", `testdriverai@${testdriveraiVersion}`], {
-        env: process.env,
-        shell: true,
-        windowsHide: true,
-      })
+      const child = spawn(
+        "npm",
+        ["install", "-g", `testdriverai@${testdriveraiVersion}`],
+        {
+          env: process.env,
+          shell: true,
+          windowsHide: true,
+        }
+      );
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
-      child.stdout.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
-      child.stderr.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
+      child.stdout.on("data", (data) =>
+        ipc.server.emit(socket, "stdout", data.toString())
+      );
+      child.stderr.on("data", (data) =>
+        ipc.server.emit(socket, "stdout", data.toString())
+      );
       child.on("error", function (e) {
         reject(e);
-      })
+      });
       child.on("exit", function (code) {
         if (code === 0) resolve();
-        else reject()
-      })
+        else reject();
+      });
     } catch (err) {
-      reject(err)
+      reject(err);
     }
-
-  })
-}
+  });
+};
 
 let i = 0;
 const spawnInterpreter = function (data, socket) {
@@ -175,94 +190,106 @@ const spawnInterpreter = function (data, socket) {
   });
 };
 
+function getFileExtension(filename) {
+  const parts = filename.split(".");
+  return parts.length > 1 ? parts.pop().toLowerCase() : "";
+}
+
 const spawnShell = function (data, socket) {
   let child;
 
   return new Promise((resolve, reject) => {
     try {
       const args = JSON.parse(data.toString());
-      let prerunScript = args[2];
-      const testdriverRepoPath = args[5] || process.env.TESTDRIVER_REPO_PATH;
+      let prerunFilePath = args[2];
+      const githubActionRepoPath =
+        args[5] || process.env.GITHUB_ACTION_REPO_PATH;
 
-      // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
+      let type = os.platform() === "win32" ? "ps1" : "sh";
 
-      let prerunFilePath = "prerun.sh";
-      if (process.platform === "win32") {
-        prerunFilePath = "prerun.ps1";
-      }
+      if (!prerunFilePath && githubActionRepoPath) {
+        prerunFilePath = path.join(githubActionRepoPath, "testdriver");
+        const prerunFiles = fs
+          .readdirSync(prerunFilePath, { withFileTypes: true })
+          .filter(
+            (file) =>
+              file.isFile() &&
+              (os.platform === "win32"
+                ? /^prerun\.(sh|ps1)$/i
+                : /^prerun\.sh$/i
+              ).test(file.name)
+          )
+          .map((file) => file.name);
 
-      if (testdriverRepoPath) {
-        prerunFilePath = path.join(testdriverRepoPath, "testdriver", prerunFilePath);
-      } else {
-        prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
+        switch (prerunFiles.length) {
+          case 0:
+            prerunFilePath = null;
+            break;
+          case 1:
+            prerunFilePath = path.join(prerunFilePath, prerunFiles[0]);
+            type = getFileExtension(prerunFiles[0]);
+            break;
+          default:
+            let file =
+              prerunFiles.find((file) =>
+                file.toLowerCase().endsWith(`.${type}`)
+              ) || null;
+
+            if (!file && os.platform() === "win32") prerunFiles[0];
+
+            if (file) {
+              prerunFilePath = path.join(prerunFilePath, file);
+              type = getFileExtension(file);
+            }
+        }
       }
 
       // Check if the prerun file doesn't exist
       // this can happen if the repo supplies this file within `testdriver/prerun`
       // mostly for backward compatibility
-      if (prerunScript) {
-        // this should be swapped, prerun should take over
-        // Write prerun to the prerun file
+      if (prerunFilePath) {
+        if (!fs.existsSync(prerunFilePath)) {
+          ipc.server.emit(
+            socket,
+            "stderr",
+            `Prerun file does not exist at ${prerunFilePath}`
+          );
+          return resolve();
+        } else {
+          // this should be swapped, prerun should take over
+          // Write prerun to the prerun file
+          const prerunScript = fs.readFileSync(prerunFilePath, "utf-8");
+          ipc.server.emit(
+            socket,
+            "stdout",
+            chalk.green("TestDriver: ") +
+              chalk.yellow("Running Prerun Script") +
+              "\n\n```\n" +
+              prerunScript +
+              "\n```\n\nFrom: " +
+              '"' +
+              prerunFilePath +
+              '"\n'
+          );
 
-        ipc.server.emit(
-          socket,
-          "stdout",
-          chalk.green("TestDriver: ") +
-          chalk.yellow("Running Prerun Script") +
-          "\n\n```\n" +
-          prerunScript +
-          "\n```\n\nFrom: " +
-          '"' +
-          prerunFilePath +
-          '"'
-        );
-
-        if (process.platform === "win32") {
-          prerunScript = prerunScript.replace(/(?<!\r)\n/g, "\r\n");
-        }
-
-        try {
-          fs.writeFileSync(prerunFilePath, prerunScript, { flag: "w+" });
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      let toRun;
-      switch (process.platform) {
-        case "darwin":
-          toRun = {
-            command: "source",
+          const toRun = {
+            command: type === "ps1" ? "powershell" : "bash",
             args: [prerunFilePath],
           };
-          break;
-        case "win32":
-          toRun = {
-            command: "powershell",
-            args: [prerunFilePath],
-          };
-          break;
-      }
-      console.log(
-        "spawning ",
-        `${toRun.command} ${toRun.args
-          .map((arg) => JSON.stringify(arg))
-          .join(" ")}`
-      );
 
-      if (fs.existsSync(prerunFilePath) && toRun) {
-        child = spawn(toRun.command, toRun.args, {
-          env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
-          shell: true,
-          windowsHide: true,
-        });
-      } else {
-        ipc.server.emit(
-          socket,
-          "stderr",
-          `Prerun file does not exist at ${prerunFilePath}`
-        );
-        resolve();
+          console.log(
+            "spawning ",
+            `${toRun.command} ${toRun.args
+              .map((arg) => JSON.stringify(arg))
+              .join(" ")}`
+          );
+
+          child = spawn(toRun.command, toRun.args, {
+            env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+            shell: true,
+            windowsHide: true,
+          });
+        }
       }
     } catch (e) {
       ipc.server.emit(socket, "stderr", e.toString());

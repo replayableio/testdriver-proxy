@@ -1,5 +1,6 @@
 const fs = require("fs");
 const chalk = require("chalk");
+const { cwd } = require("process");
 const ipc = require("@node-ipc/node-ipc").default;
 
 if (process.argv.length === 2) {
@@ -34,16 +35,26 @@ ipc.connectTo("world", function () {
     text = text.split("\n").join(" ");
 
     const apiKey = process.argv[3];
-    let prerun = process.argv[4];
-    const testdriverRepoPath = process.env.TESTDRIVER_REPO_PATH || null;
+    let prerunFilePath = process.argv[4] || null;
+    const githubActionRepoPath = process.env.GITHUB_ACTION_REPO_PATH || null;
     const testdriveraiVersion = process.env.TESTDRIVERAI_VERSION || "latest";
 
-    try {
-      if (fs.existsSync(prerun)) {
-        prerun = fs.readFileSync(prerun, "utf-8");
-      }
-    } catch (err) { }
-    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd(), testdriveraiVersion, testdriverRepoPath]));
+    if (prerunFilePath && !fs.existsSync(prerunFilePath)) {
+      console.error(chalk.red("Prerun file path does not exist"));
+      process.exit(1);
+    }
+
+    ipc.of["world"].emit(
+      "command",
+      JSON.stringify([
+        text,
+        apiKey,
+        path.join(cwd, prerunFilePath),
+        process.cwd(),
+        testdriveraiVersion,
+        githubActionRepoPath,
+      ])
+    );
   });
 
   ipc.of["world"].on("status", function (data) {

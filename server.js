@@ -183,7 +183,7 @@ const spawnShell = function (data, socket) {
       const args = JSON.parse(data.toString());
       let prerunScript = args[2];
       const testdriverRepoPath = args[5] || process.env.TESTDRIVER_REPO_PATH;
-
+      const cwd = testdriverRepoPath || args[3];
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
       let prerunFilePath = "prerun.sh";
@@ -253,6 +253,7 @@ const spawnShell = function (data, socket) {
       if (fs.existsSync(prerunFilePath) && toRun) {
         child = spawn(toRun.command, toRun.args, {
           env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+          cwd,
           shell: true,
           windowsHide: true,
         });

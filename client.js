@@ -1,11 +1,7 @@
 const fs = require("fs");
 const chalk = require("chalk");
+const { program } = require("commander");
 const ipc = require("@node-ipc/node-ipc").default;
-
-if (process.argv.length === 2) {
-  console.error("Expected at least one argument");
-  process.exit(1);
-}
 
 ipc.config.id = "hello";
 // ipc.config.retry = 1500;
@@ -22,49 +18,113 @@ function removeAnsiControlChars(input) {
   return input.replace(controlCharRegex, "");
 }
 
-// const pattern = /\u001b\[1G|\u001b\[3G/g;
-const pattern = /\x1b\[1G|\x1b\[3G/g;
+// Commander program
+program.description("TestDriverAI proxy client");
+program
+  .argument("[instructions]", "Instructions to run")
+  .argument("[prerun]", "Prerun script to run before the instructions")
+  .option("-i, --instructions-file <string>", "File with instructions to run")
+  .option("-r, --prerun-file <string>", "File with prerun script to run")
+  .option(
+    "-o, --output-file <string>",
+    "Output file to write the output of the command"
+  )
+  .parse();
+
+const options = program.opts();
+const args = program.args;
+const outputFile = options.outputFile || "";
+
+const logger = {
+  stdout: (data) => {
+    process.stdout.write(data);
+    if (outputFile) {
+      fs.appendFileSync(outputFile, data);
+    }
+  },
+  stderr: (data) => {
+    process.stderr.write(data);
+    if (outputFile) {
+      fs.appendFileSync(outputFile, data);
+    }
+  },
+};
+
+let instructions = args[0] || "";
+let prerun = args[1] || "";
+
+if (!instructions) {
+  if (!options.instructionsFile) {
+    logger.stderr(
+      "\nError: Instructions or an instructions file is required\n"
+    );
+    process.exit(1);
+  }
+  if (!fs.existsSync(options.instructionsFile)) {
+    logger.stderr(
+      `Error: Instructions file "${options.instructionsFile}" not found\n`
+    );
+    process.exit(1);
+  }
+  try {
+    instructions = fs.readFileSync(options.instructionsFile, "utf-8");
+  } catch (err) {
+    logger.stderr(
+      `Error reading instructions file "${options.instructionsFile}"\n`
+    );
+    process.exit(1);
+  }
+}
+
+if (!prerun && options.prerunFile) {
+  if (!fs.existsSync(options.prerunFile)) {
+    logger.stderr(`Error: Prerun file "${options.prerunFile}" not found\n`);
+    process.exit(1);
+  }
+  try {
+    prerun = fs.readFileSync(options.prerunFile, "utf-8");
+  } catch (err) {
+    logger.stderr(`Error reading prerun file "${options.prerunFile}"\n`);
+    process.exit(1);
+  }
+}
+
+instructions = instructions.split("\n").join(" ");
+const cwd = process.cwd();
+const env = Object.entries(process.env)
+  .filter(([key]) => key.startsWith("TESTDRIVERAI_"))
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
 
 ipc.connectTo("world", function () {
   ipc.of["world"].on("connect", function () {
-    console.log(chalk.green("TestDriver:"), "Initialized");
+    logger.stdout(`${chalk.green("TestDriver:")} Initialized\n`);
 
-    let text = process.argv[2];
-
-    text = text.split("\n").join(" ");
-
-    const apiKey = process.argv[3];
-    let prerun = process.argv[4];
-    const testdriverRepoPath = process.env.TESTDRIVER_REPO_PATH || null;
-    const testdriveraiVersion = process.env.TESTDRIVERAI_VERSION || "latest";
-
-    try {
-      if (fs.existsSync(prerun)) {
-        prerun = fs.readFileSync(prerun, "utf-8");
-      }
-    } catch (err) { }
-    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd(), testdriveraiVersion, testdriverRepoPath]));
+    ipc.of["world"].emit(
+      "command",
+      JSON.stringify({ env, cwd, prerun, instructions })
+    );
   });
 
   ipc.of["world"].on("status", function (data) {
-    console.log("status", data.toString());
+    logger.stdout(`status ${data.toString()}\n`);
   });
   ipc.of["world"].on("stdout", function (data) {
-    let dataEscaped = JSON.stringify(data);
-
-    // see the outpout
-    // console.log(JSON.stringify(removeAnsiControlChars(JSON.parse(dataEscaped))))
-
-    process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
+    const dataEscaped = removeAnsiControlChars(
+      JSON.parse(JSON.stringify(data))
+    );
+    logger.stdout(dataEscaped);
   });
   ipc.of["world"].on("stderr", function (data) {
-    process.stderr.write(data);
+    logger.stderr(data);
   });
   ipc.of["world"].on("close", function (code) {
     process.exit(code || 0);
   });
   ipc.of["world"].on("error", function (err) {
-    console.error(err);
+    logger.stderr(`${err.toString()}\n`);
     process.exit(1);
   });
 });

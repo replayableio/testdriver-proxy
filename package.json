@@ -11,6 +11,7 @@
   "dependencies": {
     "@node-ipc/node-ipc": "^11.0.3",
     "chalk": "^4.1.2",
+    "commander": "^12.1.0",
     "dashcam-chrome": "^0.2.3"
   },
   "bin": {

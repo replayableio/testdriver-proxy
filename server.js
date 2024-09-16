@@ -45,78 +45,85 @@ ipc.serve(function () {
 
   ipc.server.on("command", async (data, socket) => {
     console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
+    const { env, cwd, prerun, instructions } = JSON.parse(data.toString());
+    const version =
+      env.TESTDRIVERAI_VERSION || process.env.TESTDRIVERAI_VERSION || "latest";
 
-    await installTestdriver(data, socket)
+    await installTestdriverai(version, socket)
       .then(() => {
-        ipc.server.emit(socket, "stdout", "Successfully installed testdriverai package");
+        ipc.server.emit(
+          socket,
+          "stdout",
+          "\nSuccessfully installed testdriverai package\n"
+        );
       })
-      .catch(err => {
-        ipc.server.emit(socket, "stderr", "Failed to install testdriverai package");
-        throw new Error("Failed to install testdriverai package");
-      })
+      .catch((err) => {
+        const errorMessage = `Failed to install testdriverai package: ${err.message}`;
+        console.error(errorMessage);
+        ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
+        ipc.server.emit(socket, "close", 1);
+      });
 
-    await spawnShell(data, socket).catch((e) => {
-      console.error(e);
-    });
+    await spawnShell({ cwd, env, prerun }, socket)
+      .then(() => {
+        ipc.server.emit(socket, "stdout", "\nSuccessfully ran prerun script\n");
+      })
+      .catch((err) => {
+        const errorMessage = `Failed to run prerun script: ${err.message}`;
+        console.error(errorMessage);
+        ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
+        ipc.server.emit(socket, "close", 1);
+      });
 
     setTimeout(() => {
       // give prerun tiem to resolve, launch an app, etc
       // this gives chrome time to launch, so prompts assume prerun has resolved
-      spawnInterpreter(data, socket);
+      spawnInterpreter({ cwd, env, instructions }, socket);
     }, 5000);
   });
 });
 
-const installTestdriver = async function (data, socket) {
+const installTestdriverai = async function (version, socket) {
   return new Promise((resolve, reject) => {
     try {
-      const args = JSON.parse(data.toString());
-      const testdriveraiVersion = args[4] || "latest";
-
-      const child = spawn("npm", ["install", "-g", `testdriverai@${testdriveraiVersion}`], {
+      const child = spawn("npm", ["install", "-g", `testdriverai@${version}`], {
         env: process.env,
         shell: true,
         windowsHide: true,
-      })
+      });
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
-      child.stdout.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
-      child.stderr.on("data", (data) => ipc.server.emit(socket, "stdout", data.toString()));
-      child.on("error", function (e) {
-        reject(e);
-      })
-      child.on("exit", function (code) {
-        if (code === 0) resolve();
-        else reject()
-      })
+      child.stdout.on("data", (data) =>
+        ipc.server.emit(socket, "stdout", data.toString())
+      );
+      child.stderr.on("data", (data) =>
+        ipc.server.emit(socket, "stderr", data.toString())
+      );
+      child.on("error", reject);
+      child.on("exit", (code) => {
+        if (code === 0) return resolve();
+        reject(new Error(`npm install exited with code ${code}`));
+      });
     } catch (err) {
-      reject(err)
+      reject(err);
     }
-
-  })
-}
+  });
+};
 
 let i = 0;
-const spawnInterpreter = function (data, socket) {
+const spawnInterpreter = function ({ cwd, env, instructions }, socket) {
   let child;
-  let text;
-  let key;
   let step = 0;
   try {
-    const args = JSON.parse(data.toString());
-    text = args[0];
-    key = args[1];
-    cwd = args[3];
-
     console.log("!!! SPAWNING");
 
-    list = markdownToListArray(text);
+    list = markdownToListArray(instructions);
 
     child = spawn(`testdriverai`, [], {
       env: {
         ...process.env,
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY || key,
+        ...env,
         FORCE_COLOR: true,
       },
       cwd,
@@ -175,15 +182,14 @@ const spawnInterpreter = function (data, socket) {
   });
 };
 
-const spawnShell = function (data, socket) {
+const spawnShell = function ({ cwd, env, prerun }, socket) {
   let child;
 
   return new Promise((resolve, reject) => {
     try {
-      const args = JSON.parse(data.toString());
-      let prerunScript = args[2];
-      const testdriverRepoPath = args[5] || process.env.TESTDRIVER_REPO_PATH;
-      const cwd = testdriverRepoPath || args[3];
+      const testdriverRepoPath =
+        env.TESTDRIVERAI_REPO_PATH || process.env.TESTDRIVERAI_REPO_PATH;
+      if (testdriverRepoPath) cwd = testdriverRepoPath;
       // example input  'rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt \\n npm install dashcam-chrome --save \\n /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --start-maximized --load-extension=./node_modules/dashcam-chrome/build/ 1>/dev/null 2>&1 & \\n exit'
 
       let prerunFilePath = "prerun.sh";
@@ -192,7 +198,11 @@ const spawnShell = function (data, socket) {
       }
 
       if (testdriverRepoPath) {
-        prerunFilePath = path.join(testdriverRepoPath, "testdriver", prerunFilePath);
+        prerunFilePath = path.join(
+          testdriverRepoPath,
+          "testdriver",
+          prerunFilePath
+        );
       } else {
         prerunFilePath = path.join(os.tmpdir(), prerunFilePath);
       }
@@ -200,29 +210,30 @@ const spawnShell = function (data, socket) {
       // Check if the prerun file doesn't exist
       // this can happen if the repo supplies this file within `testdriver/prerun`
       // mostly for backward compatibility
-      if (prerunScript) {
+      if (prerun) {
         // this should be swapped, prerun should take over
         // Write prerun to the prerun file
 
         ipc.server.emit(
           socket,
           "stdout",
-          chalk.green("TestDriver: ") +
-          chalk.yellow("Running Prerun Script") +
-          "\n\n```\n" +
-          prerunScript +
-          "\n```\n\nFrom: " +
-          '"' +
-          prerunFilePath +
-          '"'
+          `
+${chalk.green("TestDriver: ")}${chalk.yellow("Running Prerun Script")}
+
+\`\`\`
+${prerun.replace(/\r\n/g, "\n")}
+\`\`\`
+
+From: "${prerunFilePath}"
+`
         );
 
         if (process.platform === "win32") {
-          prerunScript = prerunScript.replace(/(?<!\r)\n/g, "\r\n");
+          prerun = prerun.replace(/(?<!\r)\n/g, "\r\n");
         }
 
         try {
-          fs.writeFileSync(prerunFilePath, prerunScript, { flag: "w+" });
+          fs.writeFileSync(prerunFilePath, prerun, { flag: "w+" });
         } catch (e) {
           console.error(e);
         }
@@ -252,57 +263,31 @@ const spawnShell = function (data, socket) {
 
       if (fs.existsSync(prerunFilePath) && toRun) {
         child = spawn(toRun.command, toRun.args, {
-          env: { ...process.env }, // FORCE_COLOR: true,  will enable advanced rendering
+          env: { ...process.env, ...env },
           cwd,
           shell: true,
           windowsHide: true,
         });
       } else {
-        ipc.server.emit(
-          socket,
-          "stderr",
-          `Prerun file does not exist at ${prerunFilePath}`
-        );
-        resolve();
+        throw new Error(`Prerun file does not exist at ${prerunFilePath}`);
       }
     } catch (e) {
-      ipc.server.emit(socket, "stderr", e.toString());
-      resolve();
+      reject(e);
     }
 
-    child.on("close", function (exitCode) {
-      console.log("close", exitCode);
-      ipc.server.emit(
-        socket,
-        "stdout",
-        "Prerun exited with code " + exitCode + "\n\n"
-      );
-      resolve();
-    });
-
-    child.on("error", function (e) {
-      console.log("error", e);
-      ipc.server.emit(socket, "stderr", e.toString() + "\n");
-      resolve();
-    });
-
-    child.stdout.on("end", function () {
-      console.log("end");
-      ipc.server.emit(socket, "stdout", "Prerun process end\n");
-      resolve();
-    });
-
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     child.stdout.on("data", async (data) => {
-      let dataToSend = data.toString();
-
-      console.log("dataToSend", dataToSend);
-
-      ipc.server.emit(socket, "stdout", dataToSend);
+      ipc.server.emit(socket, "stdout", data.toString());
     });
 
     child.stderr.on("data", (data) => {
-      console.log("std err", data.toString());
       ipc.server.emit(socket, "stderr", data.toString());
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) return resolve();
+      reject(new Error(`Prerun script exited with code ${code}`));
     });
   });
 };

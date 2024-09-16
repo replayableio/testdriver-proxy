@@ -29,21 +29,39 @@ ipc.connectTo("world", function () {
   ipc.of["world"].on("connect", function () {
     console.log(chalk.green("TestDriver:"), "Initialized");
 
-    let text = process.argv[2];
-
-    text = text.split("\n").join(" ");
-
-    const apiKey = process.argv[3];
-    let prerun = process.argv[4];
-    const testdriverRepoPath = process.env.TESTDRIVER_REPO_PATH || null;
-    const testdriveraiVersion = process.env.TESTDRIVERAI_VERSION || "latest";
-
-    try {
-      if (fs.existsSync(prerun)) {
-        prerun = fs.readFileSync(prerun, "utf-8");
+    let instructions = process.argv[2];
+    let prerun = process.argv[3] || null;
+    if (fs.existsSync(instructions)) {
+      try {
+        instructions = fs.readFileSync(instructions, "utf-8");
+      } catch (err) {
+        console.error("Error reading file: ", instructions);
+        process.exit(1);
       }
-    } catch (err) { }
-    ipc.of["world"].emit("command", JSON.stringify([text, apiKey, prerun, process.cwd(), testdriveraiVersion, testdriverRepoPath]));
+    }
+
+    if (fs.existsSync(prerun)) {
+      try {
+        prerun = fs.readFileSync(prerun, "utf-8");
+      } catch (err) {
+        console.error("Error reading file: ", prerun);
+        process.exit(1);
+      }
+    }
+
+    instructions = instructions.split("\n").join(" ");
+    const cwd = process.cwd();
+    const env = Object.entries(process.env)
+      .filter(([key]) => key.startsWith("TESTDRIVERAI_"))
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+
+    ipc.of["world"].emit(
+      "command",
+      JSON.stringify({ env, cwd, prerun, instructions })
+    );
   });
 
   ipc.of["world"].on("status", function (data) {
@@ -51,10 +69,6 @@ ipc.connectTo("world", function () {
   });
   ipc.of["world"].on("stdout", function (data) {
     let dataEscaped = JSON.stringify(data);
-
-    // see the outpout
-    // console.log(JSON.stringify(removeAnsiControlChars(JSON.parse(dataEscaped))))
-
     process.stdout.write(removeAnsiControlChars(JSON.parse(dataEscaped)));
   });
   ipc.of["world"].on("stderr", function (data) {

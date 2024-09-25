@@ -86,7 +86,7 @@ ipc.serve(function () {
 const installTestdriverai = async function (version, socket) {
   return new Promise((resolve, reject) => {
     try {
-      const child = spawn("npm", ["install", "-g", `testdriverai@${version}`], {
+      const child = spawn("pnpm", ["install", "-g", `testdriverai@${version}`], {
         env: process.env,
         shell: true,
         windowsHide: true,

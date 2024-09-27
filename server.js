@@ -229,7 +229,8 @@ From: "${prerunFilePath}"
         );
 
         if (process.platform === "win32") {
-          prerun = prerun.replace(/(?<!\r)\n/g, "\r\n");
+          prerun = `$ErrorActionPreference = "Stop"
+${prerun}`.replace(/(?<!\r)\n/g, "\r\n");
         }
 
         try {

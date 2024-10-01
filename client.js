@@ -89,7 +89,7 @@ if (!prerun && options.prerunFile) {
   }
 }
 
-instructions = instructions.split("\n").join(" ");
+// instructions = instructions.split("\n").join(" ");
 const cwd = process.cwd();
 const env = Object.entries(process.env)
   .filter(([key]) => key.startsWith("TESTDRIVERAI_"))

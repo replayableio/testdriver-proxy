@@ -112,7 +112,10 @@ const installTestdriverai = async function (version, socket) {
 };
 
 let i = 0;
-const spawnInterpreter = function ({ cwd, env, instructions }, socket) {
+const spawnInterpreter = function (
+  { cwd, env, inspect, instructions },
+  socket
+) {
   let child;
   let step = 0;
   try {
@@ -120,7 +123,17 @@ const spawnInterpreter = function ({ cwd, env, instructions }, socket) {
 
     list = markdownToListArray(instructions);
 
-    child = spawn(`testdriverai`, [], {
+    let command = "testdriverai";
+    let args = [];
+    if (inspect && process.platform === "win32") {
+      command = "node";
+      args = [
+        "--inspect",
+        "C:\\Users\\testdriver\\AppData\\Local\\Yarn\\global\\node_modules\\testdriverai\\index.js",
+      ];
+    }
+
+    child = spawn(command, args, {
       env: {
         TD_SPEAK: false,
         TD_ANALYTICS: true,

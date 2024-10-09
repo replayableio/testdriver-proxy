@@ -64,16 +64,22 @@ ipc.serve(function () {
         ipc.server.emit(socket, "close", 1);
       });
 
-    await spawnShell({ cwd, env, prerun }, socket)
-      .then(() => {
-        ipc.server.emit(socket, "stdout", "\nSuccessfully ran prerun script\n");
-      })
-      .catch((err) => {
-        const errorMessage = `Failed to run prerun script: ${err.message}`;
-        console.error(errorMessage);
-        ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
-        ipc.server.emit(socket, "close", 1);
-      });
+    if (prerun) {
+      await spawnShell({ cwd, env, prerun }, socket)
+        .then(() => {
+          ipc.server.emit(
+            socket,
+            "stdout",
+            "\nSuccessfully ran prerun script\n"
+          );
+        })
+        .catch((err) => {
+          const errorMessage = `Failed to run prerun script: ${err.message}`;
+          console.error(errorMessage);
+          ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
+          ipc.server.emit(socket, "close", 1);
+        });
+    }
 
     setTimeout(() => {
       // give prerun tiem to resolve, launch an app, etc

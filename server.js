@@ -86,7 +86,7 @@ ipc.serve(function () {
 const installTestdriverai = async function (version, socket) {
   return new Promise((resolve, reject) => {
     try {
-      const child = spawn("npm", ["install", "-g", `testdriverai@${version}`], {
+      const child = spawn("yarn", ["global", "add", `testdriverai@${version}`], {
         env: process.env,
         shell: true,
         windowsHide: true,
@@ -103,7 +103,7 @@ const installTestdriverai = async function (version, socket) {
       child.on("error", reject);
       child.on("exit", (code) => {
         if (code === 0) return resolve();
-        reject(new Error(`npm install exited with code ${code}`));
+        reject(new Error(`yarn exited with code ${code}`));
       });
     } catch (err) {
       reject(err);

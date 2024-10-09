@@ -92,7 +92,7 @@ ipc.serve(function () {
 const installTestdriverai = async function (version, socket) {
   return new Promise((resolve, reject) => {
     try {
-      const child = spawn("npm", ["install", "-g", `testdriverai@${version}`], {
+      const child = spawn("yarn", ["global", "add", `testdriverai@${version}`], {
         env: process.env,
         shell: true,
         windowsHide: true,
@@ -109,7 +109,7 @@ const installTestdriverai = async function (version, socket) {
       child.on("error", reject);
       child.on("exit", (code) => {
         if (code === 0) return resolve();
-        reject(new Error(`npm install exited with code ${code}`));
+        reject(new Error(`yarn exited with code ${code}`));
       });
     } catch (err) {
       reject(err);
@@ -118,7 +118,10 @@ const installTestdriverai = async function (version, socket) {
 };
 
 let i = 0;
-const spawnInterpreter = function ({ cwd, env, instructions }, socket) {
+const spawnInterpreter = function (
+  { cwd, env, inspect, instructions },
+  socket
+) {
   let child;
   let step = 0;
   try {
@@ -126,7 +129,17 @@ const spawnInterpreter = function ({ cwd, env, instructions }, socket) {
 
     list = markdownToListArray(instructions);
 
-    child = spawn(`testdriverai`, [], {
+    let command = "testdriverai";
+    let args = [];
+    if (inspect && process.platform === "win32") {
+      command = "node";
+      args = [
+        "--inspect",
+        "C:\\Users\\testdriver\\AppData\\Local\\Yarn\\global\\node_modules\\testdriverai\\index.js",
+      ];
+    }
+
+    child = spawn(command, args, {
       env: {
         TD_SPEAK: false,
         TD_ANALYTICS: true,

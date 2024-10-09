@@ -25,14 +25,16 @@ program
   .argument("[prerun]", "Prerun script to run before the instructions")
   .option("-i, --instructions-file <string>", "File with instructions to run")
   .option("-r, --prerun-file <string>", "File with prerun script to run")
+  .option("--inspect", "Inspect the testdriverai node process on windows")
   .option(
     "-o, --output-file <string>",
     "Output file to write the output of the command"
   )
   .parse();
 
-const options = program.opts();
 const args = program.args;
+const options = program.opts();
+const inspect = !!options.inspect;
 const outputFile = options.outputFile || "";
 
 const logger = {
@@ -92,7 +94,7 @@ if (!prerun && options.prerunFile) {
 // instructions = instructions.split("\n").join(" ");
 const cwd = process.cwd();
 const env = Object.entries(process.env)
-  .filter(([key]) => key.startsWith("TESTDRIVERAI_"))
+  .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
   .reduce((acc, [key, value]) => {
     acc[key] = value;
     return acc;
@@ -104,7 +106,7 @@ ipc.connectTo("world", function () {
 
     ipc.of["world"].emit(
       "command",
-      JSON.stringify({ env, cwd, prerun, instructions })
+      JSON.stringify({ env, cwd, prerun, inspect, instructions })
     );
   });
 

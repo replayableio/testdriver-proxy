@@ -28,9 +28,11 @@ function markdownToListArray(markdown) {
   // Split into lines, filter out non-list items, and remove the leading number and period
   const listItems = normalizedMarkdown
     .split("\n")
-    .filter((line) => line.match(/^\d+\. /))
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .filter((line) => line.match(/^(?:\d+(?:\.|\-)|\-)?\s*(\w.*)$/))
     .map((item) => {
-      item = item.replace(/^\d+\. /, "");
+      item = item.replace(/^(?:\d+(?:\.|\-)|\-)?\s*/, "");
       item = item.replace(/\\r/g, "");
       return item;
     }); // Remove the leading numbers and period

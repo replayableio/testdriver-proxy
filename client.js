@@ -94,7 +94,7 @@ if (!prerun && options.prerunFile) {
 // instructions = instructions.split("\n").join(" ");
 const cwd = process.cwd();
 const env = Object.entries(process.env)
-  .filter(([key]) => key.startsWith("TESTDRIVERAI_"))
+  .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
   .reduce((acc, [key, value]) => {
     acc[key] = value;
     return acc;

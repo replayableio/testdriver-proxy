@@ -28,9 +28,11 @@ function markdownToListArray(markdown) {
   // Split into lines, filter out non-list items, and remove the leading number and period
   const listItems = normalizedMarkdown
     .split("\n")
-    .filter((line) => line.match(/^\d+\. /))
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .filter((line) => line.match(/^(?:\d+(?:\.|\-)|\-)?\s*(\w.*)$/))
     .map((item) => {
-      item = item.replace(/^\d+\. /, "");
+      item = item.replace(/^(?:\d+(?:\.|\-)|\-)?\s*/, "");
       item = item.replace(/\\r/g, "");
       return item;
     }); // Remove the leading numbers and period
@@ -64,16 +66,22 @@ ipc.serve(function () {
         ipc.server.emit(socket, "close", 1);
       });
 
-    await spawnShell({ cwd, env, prerun }, socket)
-      .then(() => {
-        ipc.server.emit(socket, "stdout", "\nSuccessfully ran prerun script\n");
-      })
-      .catch((err) => {
-        const errorMessage = `Failed to run prerun script: ${err.message}`;
-        console.error(errorMessage);
-        ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
-        ipc.server.emit(socket, "close", 1);
-      });
+    if (prerun) {
+      await spawnShell({ cwd, env, prerun }, socket)
+        .then(() => {
+          ipc.server.emit(
+            socket,
+            "stdout",
+            "\nSuccessfully ran prerun script\n"
+          );
+        })
+        .catch((err) => {
+          const errorMessage = `Failed to run prerun script: ${err.message}`;
+          console.error(errorMessage);
+          ipc.server.emit(socket, "stderr", `\n${errorMessage}\n`);
+          ipc.server.emit(socket, "close", 1);
+        });
+    }
 
     setTimeout(() => {
       // give prerun tiem to resolve, launch an app, etc

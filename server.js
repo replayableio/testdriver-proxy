@@ -21,24 +21,15 @@ ipc.config.silent = true;
 // log the version from package.json
 console.log("testdriver-proxy version", require("./package.json").version);
 
-function markdownToListArray(markdown) {
-  // Normalize line breaks
-  const normalizedMarkdown = markdown.replace(/\\n/g, "\n");
-
-  // Split into lines, filter out non-list items, and remove the leading number and period
-  const listItems = normalizedMarkdown
-    .split("\n")
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .filter((line) => line.match(/^(?:\d+(?:\.|\-)|\-)?\s*(\w.*)$/))
-    .map((item) => {
-      item = item.replace(/^(?:\d+(?:\.|\-)|\-)?\s*/, "");
-      item = item.replace(/\\r/g, "");
-      return item;
-    }); // Remove the leading numbers and period
-
-  return listItems;
-}
+const markdownToListArray = (markdown) => {
+  return markdown
+    .replace(/\r/g, "")
+    .replace(/(^\s+|\s+$)/g, "")
+    .replace(/\s*\n\s*/g, "\n")
+    .replace(/^(\d+(\.|\-)|\-|\.)\s+/gm, "")
+    .split(/\n/)
+    .filter((l) => l.length > 0);
+};
 
 ipc.serve(function () {
   ipc.server.on("connect", function (socket) {
@@ -94,11 +85,15 @@ ipc.serve(function () {
 const installTestdriverai = async function (version, socket) {
   return new Promise((resolve, reject) => {
     try {
-      const child = spawn("yarn", ["global", "add", `testdriverai@${version}`], {
-        env: process.env,
-        shell: true,
-        windowsHide: true,
-      });
+      const child = spawn(
+        "yarn",
+        ["global", "add", `testdriverai@${version}`],
+        {
+          env: process.env,
+          shell: true,
+          windowsHide: true,
+        }
+      );
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");

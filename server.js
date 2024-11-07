@@ -145,7 +145,6 @@ const spawnInterpreter = function (
       env: {
         TD_SPEAK: false,
         TD_ANALYTICS: true,
-        TD_NOTIFY: true,
         ...process.env,
         ...env,
         FORCE_COLOR: true,

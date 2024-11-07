@@ -26,6 +26,7 @@ program
   .option("-i, --instructions-file <string>", "File with instructions to run")
   .option("-r, --prerun-file <string>", "File with prerun script to run")
   .option("--inspect", "Inspect the testdriverai node process on windows")
+  .option("-n", "--interpolation-vars", "JSON string of variables to inject into testdriverai")
   .option(
     "-o, --output-file <string>",
     "Output file to write the output of the command"
@@ -91,14 +92,26 @@ if (!prerun && options.prerunFile) {
   }
 }
 
+let interpolationVars = {};
+
+if (options.interpolationVars) {
+  interpolationVars = JSON.parse(options.interpolationVars);
+}
+
 // instructions = instructions.split("\n").join(" ");
 const cwd = process.cwd();
-const env = Object.entries(process.env)
+let env = Object.entries(process.env)
   .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
   .reduce((acc, [key, value]) => {
     acc[key] = value;
     return acc;
   }, {});
+
+// Merge in interpolation data
+env = {
+  ...env,
+  ...interpolationVars, 
+}
 
 ipc.connectTo("world", function () {
   ipc.of["world"].on("connect", function () {

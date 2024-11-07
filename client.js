@@ -91,14 +91,26 @@ if (!prerun && options.prerunFile) {
   }
 }
 
+let  userData = {};
+
+if (options.userData) {
+  userData = JSON.parse(options.userData);
+}
+
 // instructions = instructions.split("\n").join(" ");
 const cwd = process.cwd();
-const env = Object.entries(process.env)
+let env = Object.entries(process.env)
   .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
   .reduce((acc, [key, value]) => {
     acc[key] = value;
     return acc;
   }, {});
+
+// Merge in user data to be interpolated to testdriver
+env = {
+  ...userData,
+  ...env,
+}
 
 ipc.connectTo("world", function () {
   ipc.of["world"].on("connect", function () {

@@ -1,10 +1,11 @@
 {
   "name": "testdriver-proxy",
-  "version": "0.10.14",
-  "description": "",
+  "version": "0.11.0-clirpc",
+  "description": "RPC Version of Proxy",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "server": "node server.js",
+    "client": "node client.js"
   },
   "author": "",
   "license": "ISC",

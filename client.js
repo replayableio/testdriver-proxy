@@ -21,22 +21,42 @@ function removeAnsiControlChars(input) {
 // Commander program
 program.description("TestDriverAI proxy client");
 program
-  .argument("[instructions]", "Instructions to run")
-  .argument("[prerun]", "Prerun script to run before the instructions")
-  .option("-i, --instructions-file <string>", "File with instructions to run")
-  .option("-r, --prerun-file <string>", "File with prerun script to run")
-  .option("--inspect", "Inspect the testdriverai node process on windows")
-  .option("-n", "--interpolation-vars", "JSON string of variables to inject into testdriverai")
+  .argument("[command]", "Command to run")
+  .option(
+    "-c, --cwd <string>",
+    "working directory to run in"
+  )
   .option(
     "-o, --output-file <string>",
     "Output file to write the output of the command"
   )
+  .option(
+    "-e, --env <string>",
+    "Extra environment variables"
+  )
   .parse();
 
-const args = program.args;
+let command = program.args[0];
+
+// Handle Options
 const options = program.opts();
-const inspect = !!options.inspect;
 const outputFile = options.outputFile || "";
+const extraEnv = JSON.parse(options.env || "{}");
+const cwd = options.cwd || process.cwd();
+
+
+let env = Object.entries(process.env)
+  .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+// Merge in interpolation data
+env = {
+  ...env,
+  ...extraEnv,
+}
 
 const logger = {
   stdout: (data) => {
@@ -53,92 +73,39 @@ const logger = {
   },
 };
 
-let instructions = args[0] || "";
-let prerun = args[1] || "";
-
-if (!instructions) {
-  if (!options.instructionsFile) {
-    logger.stderr(
-      "\nError: Instructions or an instructions file is required\n"
-    );
-    process.exit(1);
-  }
-  if (!fs.existsSync(options.instructionsFile)) {
-    logger.stderr(
-      `Error: Instructions file "${options.instructionsFile}" not found\n`
-    );
-    process.exit(1);
-  }
-  try {
-    instructions = fs.readFileSync(options.instructionsFile, "utf-8");
-  } catch (err) {
-    logger.stderr(
-      `Error reading instructions file "${options.instructionsFile}"\n`
-    );
-    process.exit(1);
-  }
+if (!command) {
+  logger.stderr(
+    "\nError: Command is required\n"
+  );
+  process.exit(1);
 }
 
-if (!prerun && options.prerunFile) {
-  if (!fs.existsSync(options.prerunFile)) {
-    logger.stderr(`Error: Prerun file "${options.prerunFile}" not found\n`);
-    process.exit(1);
-  }
-  try {
-    prerun = fs.readFileSync(options.prerunFile, "utf-8");
-  } catch (err) {
-    logger.stderr(`Error reading prerun file "${options.prerunFile}"\n`);
-    process.exit(1);
-  }
-}
-
-let interpolationVars = {};
-
-if (options.interpolationVars) {
-  interpolationVars = JSON.parse(options.interpolationVars);
-}
-
-// instructions = instructions.split("\n").join(" ");
-const cwd = process.cwd();
-let env = Object.entries(process.env)
-  .filter(([key]) => key.startsWith("TESTDRIVERAI_") || key.startsWith("TD_"))
-  .reduce((acc, [key, value]) => {
-    acc[key] = value;
-    return acc;
-  }, {});
-
-// Merge in interpolation data
-env = {
-  ...env,
-  ...interpolationVars, 
-}
-
-ipc.connectTo("world", function () {
-  ipc.of["world"].on("connect", function () {
-    logger.stdout(`${chalk.green("TestDriver:")} Initialized\n`);
+ipc.connectTo("world", function() {
+  ipc.of["world"].on("connect", function() {
+    logger.stdout(`${chalk.green("TestDriver proxy:")} Initialized\n`);
 
     ipc.of["world"].emit(
       "command",
-      JSON.stringify({ env, cwd, prerun, inspect, instructions })
+      JSON.stringify({ env, cwd, command })
     );
   });
 
-  ipc.of["world"].on("status", function (data) {
+  ipc.of["world"].on("status", function(data) {
     logger.stdout(`status ${data.toString()}\n`);
   });
-  ipc.of["world"].on("stdout", function (data) {
+  ipc.of["world"].on("stdout", function(data) {
     const dataEscaped = removeAnsiControlChars(
       JSON.parse(JSON.stringify(data))
     );
     logger.stdout(dataEscaped);
   });
-  ipc.of["world"].on("stderr", function (data) {
+  ipc.of["world"].on("stderr", function(data) {
     logger.stderr(data);
   });
-  ipc.of["world"].on("close", function (code) {
+  ipc.of["world"].on("close", function(code) {
     process.exit(code || 0);
   });
-  ipc.of["world"].on("error", function (err) {
+  ipc.of["world"].on("error", function(err) {
     logger.stderr(`${err.toString()}\n`);
     process.exit(1);
   });

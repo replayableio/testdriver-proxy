@@ -5,16 +5,27 @@ const chalk = require("chalk");
 const os = require("node:os");
 const path = require("path");
 
+const { program } = require("commander");
+
+// Commander program
+program.description("TestDriverAI proxy server");
+program
+  .option(
+    "-i, --id <string>",
+    "Id of server"
+  )
+  .parse();
+
 if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + process.platform);
 }
 
-ipc.config.id = "world";
+ipc.config.id = program.opts().id || "world";
 ipc.config.retry = 1500;
 // ipc.config.rawBuffer = true;
 ipc.config.encoding = "utf-8";
 ipc.config.sync = true;
-ipc.config.silent = true;
+ipc.config.silent = false;
 // ipc.config.logDepth = 0; //default
 // ipc.config.logger = () => {};
 

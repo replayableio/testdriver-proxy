@@ -27,6 +27,10 @@ program
     "working directory to run in"
   )
   .option(
+    "-i, --id <string>",
+    "ID of server to connect to"
+  )
+  .option(
     "-o, --output-file <string>",
     "Output file to write the output of the command"
   )
@@ -43,6 +47,7 @@ const options = program.opts();
 const outputFile = options.outputFile || "";
 const extraEnv = JSON.parse(options.env || "{}");
 const cwd = options.cwd || process.cwd();
+const serverId = options.id || "world";
 
 
 let env = Object.entries(process.env)
@@ -80,32 +85,32 @@ if (!command) {
   process.exit(1);
 }
 
-ipc.connectTo("world", function() {
-  ipc.of["world"].on("connect", function() {
+ipc.connectTo(serverId, function() {
+  ipc.of[serverId].on("connect", function() {
     logger.stdout(`${chalk.green("TestDriver proxy:")} Initialized\n`);
 
-    ipc.of["world"].emit(
+    ipc.of[serverId].emit(
       "command",
       JSON.stringify({ env, cwd, command })
     );
   });
 
-  ipc.of["world"].on("status", function(data) {
+  ipc.of[serverId].on("status", function(data) {
     logger.stdout(`status ${data.toString()}\n`);
   });
-  ipc.of["world"].on("stdout", function(data) {
+  ipc.of[serverId].on("stdout", function(data) {
     const dataEscaped = removeAnsiControlChars(
       JSON.parse(JSON.stringify(data))
     );
     logger.stdout(dataEscaped);
   });
-  ipc.of["world"].on("stderr", function(data) {
+  ipc.of[serverId].on("stderr", function(data) {
     logger.stderr(data);
   });
-  ipc.of["world"].on("close", function(code) {
+  ipc.of[serverId].on("close", function(code) {
     process.exit(code || 0);
   });
-  ipc.of["world"].on("error", function(err) {
+  ipc.of[serverId].on("error", function(err) {
     logger.stderr(`${err.toString()}\n`);
     process.exit(1);
   });

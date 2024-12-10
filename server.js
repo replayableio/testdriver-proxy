@@ -68,7 +68,7 @@ const spawnInterpreter = function(
         FORCE_COLOR: true,
       },
       cwd,
-      shell: true,
+      shell: "powershell.exe",
       windowsHide: true,
     });
     child.stdout.setEncoding("utf8");

@@ -338,5 +338,3 @@ function stripAnsi(string) {
 setInterval(function () {
   console.log("server running... " + new Date());
 }, 1000 * 20);
- 
-spawnInterpreter()

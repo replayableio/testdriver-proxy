@@ -1,6 +1,6 @@
 {
   "name": "testdriver-proxy",
-  "version": "0.11.1-clirpc",
+  "version": "0.12.0-clirpc",
   "description": "RPC Version of Proxy",
   "main": "index.js",
   "scripts": {

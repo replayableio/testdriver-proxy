@@ -21,7 +21,7 @@ function removeAnsiControlChars(input) {
 // Commander program
 program.description("TestDriverAI proxy client");
 program
-  .argument("[command]", "Command to run")
+  .argument("<command> [additional...]", "Command to run")
   .option(
     "-c, --cwd <string>",
     "working directory to run in"
@@ -38,9 +38,20 @@ program
     "-e, --env <string>",
     "Extra environment variables"
   )
+  .option(
+    "-d, --delay <number>",
+    "Number of MS to delay between sending each additional command",
+    2500
+  )
+  .option(
+    "-n, --newline <string>",
+    "Newline to send after each command",
+    "\r\n"
+  )
   .parse();
 
 let command = program.args[0];
+let additional = program.args.slice(1);
 
 // Handle Options
 const options = program.opts();
@@ -48,6 +59,8 @@ const outputFile = options.outputFile || "";
 const extraEnv = JSON.parse(options.env || "{}");
 const cwd = options.cwd || process.cwd();
 const serverId = options.id || "world";
+const delay = options.delay;
+const newline = options.newline;
 
 
 let env = Object.entries(process.env)
@@ -85,6 +98,16 @@ if (!command) {
   process.exit(1);
 }
 
+async function sendCommands() {
+  for (const arg of additional) {
+    await new Promise((resolve) => setTimeout(resolve, delay)); 
+    console.log("Sending:", arg);
+    ipc.of[serverId].emit(
+      "input", arg + newline
+    );
+  }
+}
+
 ipc.connectTo(serverId, function() {
   ipc.of[serverId].on("connect", function() {
     logger.stdout(`${chalk.green("TestDriver proxy:")} Initialized\n`);
@@ -93,6 +116,8 @@ ipc.connectTo(serverId, function() {
       "command",
       JSON.stringify({ env, cwd, command })
     );
+
+    sendCommands();
   });
 
   ipc.of[serverId].on("status", function(data) {

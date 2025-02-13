@@ -12,7 +12,12 @@ program.description("TestDriverAI proxy server");
 program
   .option(
     "-i, --id <string>",
-    "Id of server"
+    "Id of server",
+    "world"
+  )
+  .option(
+    "-v, --verbose",
+    "Verbose If True"
   )
   .parse();
 
@@ -20,32 +25,65 @@ if (!["darwin", "win32"].includes(process.platform)) {
   throw new Error("Unsupported platform: " + process.platform);
 }
 
-ipc.config.id = program.opts().id || "world";
+ipc.config.id = program.opts().id;
 ipc.config.retry = 1500;
-// ipc.config.rawBuffer = true;
 ipc.config.encoding = "utf-8";
 ipc.config.sync = true;
-ipc.config.silent = false;
-// ipc.config.logDepth = 0; //default
-// ipc.config.logger = () => {};
+ipc.config.silent = !program.opts().verbose;
 
 // log the version from package.json
 console.log("testdriver-proxy version", require("./package.json").version);
 
+let currentProcess = null;
+
 ipc.serve(function() {
+  console.log(chalk`{green Started Server}`);
   ipc.server.on("connect", function(socket) {
     ipc.server.emit(socket, "status", "connected");
   });
 
   ipc.server.on("command", async (data, socket) => {
-    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! command");
-    const { env, cwd, command } = JSON.parse(data.toString());
+    const { env, cwd, command, delay } = JSON.parse(data.toString());
+    console.log(chalk`
+{yellow Command Received}
+{cyan command:} ${command}
+{cyan CWD}: ${cwd}
+{cyan ENV}: ${JSON.stringify(env)}
+`);
+
+    // Kill Current Process
+    if (currentProcess) {
+      console.log(chalk`{red Process already exists, killing...}`);
+      try {
+        currentProcess.kill();
+      } catch (e) {
+        console.log(chalk`{red Error killing process: ${e}}`);
+      }
+    }
 
     setTimeout(() => {
       // give prerun tiem to resolve, launch an app, etc
       // this gives chrome time to launch, so prompts assume prerun has resolved
       spawnInterpreter({ cwd, env, command }, socket);
-    }, 5000);
+    }, delay ?? 5000);
+  });
+
+  ipc.server.on("input", async (data, socket) => {
+    console.log(chalk`{yellow Input Received}: ${data}`);
+    if (!currentProcess) {
+      console.log(chalk`{red Ignoring input, no process running}`);
+      return;
+    }
+    currentProcess.stdin.write(data.toString());
+  });
+
+  ipc.server.on("kill", async (data, socket) => {
+    console.log(chalk`{yellow Kill Signal Received}`);
+    if (!currentProcess) {
+      console.log(chalk`{red Ignoring kill, no process running}`);
+      return;
+    }
+    currentProcess.kill('SIGTERM');
   });
 });
 
@@ -53,10 +91,9 @@ const spawnInterpreter = function(
   { cwd, env, command },
   socket
 ) {
-  console.log(env);
   let child;
   try {
-    console.log("!!! SPAWNING");
+    console.log(chalk`{cyan Spawning Process...}`);
 
     child = spawn(command, {
       env: {
@@ -71,15 +108,17 @@ const spawnInterpreter = function(
       shell: "powershell.exe",
       windowsHide: true,
     });
+    currentProcess = child;
     child.stdout.setEncoding("utf8");
   } catch (e) {
-    console.log("caught", e);
+    console.log(chalk`{red Spawing Error:}\n${e}`);
     ipc.server.emit(socket, "stderr", e.toString());
   }
 
   child.on("error", function(e) {
-    console.log("error", e);
+    console.log(chalk`{red Process Error:}\n${e}`);
     ipc.server.emit(socket, "stderr", e.toString());
+    currentProcess = null;
   });
 
   child.stdout.on("data", async (data) => {
@@ -92,17 +131,18 @@ const spawnInterpreter = function(
   });
 
   child.on("close", (code) => {
-    console.log(code, "close");
+    console.log(chalk `{yellow Process closed with code:} ${code}`);
     if (typeof code !== "number") {
       code = 0;
     }
 
     ipc.server.emit(socket, "close", code);
+    currentProcess = null;
   });
 };
 
 ipc.server.start();
 
 setInterval(function() {
-  console.log("server running... " + new Date());
+  console.log(chalk`{grey Server running... ${new Date()}}`);
 }, 1000 * 20);

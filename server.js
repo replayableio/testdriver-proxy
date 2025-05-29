@@ -171,6 +171,9 @@ const spawnInterpreter = function (
     lineBuffer = data.toString();
     let lines = lineBuffer.split("\n");
 
+    // always try to summarize when running in ci
+    lines.push("/summarize");
+
     ipc.server.emit(socket, "stdout", lineBuffer);
 
     if (stripAnsi(lines[lines.length - 1]).indexOf(">") === 0) {
